@@ -65,7 +65,7 @@ export default function Wallet() {
             </div>
           </div>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            <div className="rounded-lg bg-secondary p-4 shadow-sm transition-all duration-300 hover:shadow-md">
+            <div className="glass-stat-primary rounded-xl p-4 shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
               <p className="font-medium text-secondary-foreground text-sm opacity-80">
                 {t("balance", "Balance")}
               </p>
@@ -73,7 +73,7 @@ export default function Wallet() {
                 <Display type="currency" value={user?.balance} />
               </p>
             </div>
-            <div className="rounded-lg bg-secondary p-4 shadow-sm transition-all duration-300 hover:shadow-md">
+            <div className="glass-stat-success rounded-xl p-4 shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
               <p className="font-medium text-secondary-foreground text-sm opacity-80">
                 {t("giftAmount", "Gift Amount")}
               </p>
@@ -81,7 +81,7 @@ export default function Wallet() {
                 <Display type="currency" value={user?.gift_amount} />
               </p>
             </div>
-            <div className="rounded-lg bg-secondary p-4 shadow-sm transition-all duration-300 hover:shadow-md">
+            <div className="glass-stat-accent rounded-xl p-4 shadow-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-md">
               <p className="font-medium text-secondary-foreground text-sm opacity-80">
                 {t("commission", "Commission")}
               </p>

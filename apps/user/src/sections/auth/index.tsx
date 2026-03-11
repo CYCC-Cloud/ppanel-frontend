@@ -35,29 +35,31 @@ export default function Main() {
   ].filter((method) => method.enabled);
 
   return (
-    <main className="flex h-full min-h-screen items-center bg-muted/50">
+    <main className="auth-bg flex h-full min-h-screen items-center">
       <div className="flex size-full flex-auto flex-col lg:flex-row">
         <div className="flex bg-center bg-cover lg:w-1/2 lg:flex-auto">
           <div className="flex w-full flex-col items-center justify-center px-5 py-7 md:px-15 lg:py-15">
-            <Link className="mb-0 flex flex-col items-center lg:mb-12" to="/">
+            <Link className="mb-6 flex flex-col items-center lg:mb-12" to="/">
               {site.site_logo && (
                 <img alt="logo" height={48} src={site.site_logo} width={48} />
               )}
               <span className="font-semibold text-2xl">{site.site_name}</span>
             </Link>
-            <DotLottieReact
-              autoplay
-              className="mx-auto hidden w-[275px] lg:block xl:w-[500px]"
-              loop
-              src="./assets/lotties/login.json"
-            />
+            <div className="flex min-h-[180px] items-center justify-center">
+              <DotLottieReact
+                autoplay
+                className="mx-auto hidden w-[275px] lg:block xl:w-[500px]"
+                loop
+                src="./assets/lotties/login.json"
+              />
+            </div>
             <p className="hidden w-[275px] text-center md:w-1/2 lg:block xl:w-[500px]">
               {site.site_desc}
             </p>
           </div>
         </div>
         <div className="flex flex-initial justify-center p-12 lg:flex-auto lg:justify-end">
-          <div className="flex w-full flex-col items-center rounded-2xl md:w-[600px] md:p-10 lg:flex-auto lg:bg-background lg:shadow">
+          <div className="auth-panel flex w-full flex-col items-center rounded-2xl md:w-[600px] md:p-10 lg:flex-auto lg:shadow">
             <div className="flex w-full flex-col items-stretch justify-center md:w-[400px] lg:h-full">
               <div className="flex flex-col justify-center lg:flex-auto">
                 <h1 className="mb-3 text-center font-bold text-2xl">

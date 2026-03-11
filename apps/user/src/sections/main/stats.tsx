@@ -68,7 +68,7 @@ export function Stats() {
             <div className="mr-4 flex h-20 w-20 items-center justify-center rounded-full">
               {item.icon}
             </div>
-            <div className="flex flex-col">
+            <div className="flex flex-col gap-0.5">
               <p className="font-semibold text-lg">{item.name}</p>
               <p className="text-muted-foreground text-sm">
                 {item.description}
