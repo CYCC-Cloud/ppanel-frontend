@@ -32,18 +32,7 @@ import { z } from "zod";
 import { useNode } from "@/stores/node";
 import { useServer } from "@/stores/server";
 
-export type ProtocolName =
-  | "shadowsocks"
-  | "vmess"
-  | "vless"
-  | "trojan"
-  | "hysteria"
-  | "tuic"
-  | "anytls"
-  | "naive"
-  | "http"
-  | "socks"
-  | "mieru";
+type NodeFormPayload = Partial<API.Node> & { listener_key?: string };
 
 const buildSchema = (t: TFunction) =>
   z.object({
@@ -56,6 +45,9 @@ const buildSchema = (t: TFunction) =>
       .int()
       .gt(0, t("errors.serverRequired", "Please select a server"))
       .optional(),
+    listener_key: z
+      .string()
+      .min(1, t("errors.listenerRequired", "Please select a listener")),
     protocol: z
       .string()
       .min(1, t("errors.protocolRequired", "Please select a protocol")),
@@ -75,6 +67,16 @@ const buildSchema = (t: TFunction) =>
 
 export type NodeFormValues = z.infer<ReturnType<typeof buildSchema>>;
 
+const emptyValues: NodeFormValues = {
+  name: "",
+  server_id: undefined,
+  listener_key: "",
+  protocol: "",
+  address: "",
+  port: 0,
+  tags: [],
+};
+
 export default function NodeForm(props: {
   trigger: string;
   title: string;
@@ -84,152 +86,181 @@ export default function NodeForm(props: {
 }) {
   const { trigger, title, loading, initialValues, onSubmit } = props;
   const { t } = useTranslation("nodes");
-  const Scheme = useMemo(() => buildSchema(t), [t]);
+  const schema = useMemo(() => buildSchema(t), [t]);
   const [open, setOpen] = useState(false);
-
   const [autoFilledFields, setAutoFilledFields] = useState<Set<string>>(
     new Set()
   );
 
-  const addAutoFilledField = (fieldName: string) => {
-    setAutoFilledFields((prev) => new Set(prev).add(fieldName));
-  };
-
-  const removeAutoFilledField = (fieldName: string) => {
-    setAutoFilledFields((prev) => {
-      const newSet = new Set(prev);
-      newSet.delete(fieldName);
-      return newSet;
-    });
-  };
-
   const form = useForm<NodeFormValues>({
-    resolver: zodResolver(Scheme),
+    resolver: zodResolver(schema),
     defaultValues: {
-      name: "",
-      server_id: undefined,
-      protocol: "",
-      address: "",
-      port: 0,
-      tags: [],
+      ...emptyValues,
       ...initialValues,
+      listener_key:
+        (initialValues as NodeFormPayload | undefined)?.listener_key || "",
     },
   });
 
   const serverId = form.watch("server_id");
 
-  const { servers, getAvailableProtocols } = useServer();
+  const { servers, getAvailableListeners } = useServer();
   const { tags } = useNode();
 
   const existingTags: string[] = tags || [];
+  const availableListeners = getAvailableListeners(serverId);
 
-  const availableProtocols = getAvailableProtocols(serverId);
+  const removeAutoFilledField = (fieldName: string) => {
+    setAutoFilledFields((prev) => {
+      const next = new Set(prev);
+      next.delete(fieldName);
+      return next;
+    });
+  };
 
   useEffect(() => {
-    if (initialValues) {
-      form.reset({
-        name: "",
-        server_id: undefined,
-        protocol: "",
-        address: "",
-        port: 0,
-        tags: [],
-        ...initialValues,
-      });
+    if (!initialValues) return;
+
+    const payload = initialValues as Partial<NodeFormValues> & NodeFormPayload;
+
+    form.reset({
+      ...emptyValues,
+      ...initialValues,
+      listener_key: payload.listener_key || "",
+    });
+    setAutoFilledFields(new Set());
+  }, [form, initialValues]);
+
+  useEffect(() => {
+    if (!serverId) return;
+
+    const currentListenerKey = form.getValues("listener_key");
+    const selectedListener = availableListeners.find(
+      (listener) => listener.listener_key === currentListenerKey
+    );
+
+    if (selectedListener) {
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialValues]);
+
+    if (currentListenerKey) {
+      return;
+    }
+
+    const matchingListener = availableListeners.find(
+      (listener) =>
+        listener.protocol === form.getValues("protocol") &&
+        listener.port === form.getValues("port")
+    );
+
+    if (matchingListener) {
+      form.setValue("listener_key", matchingListener.listener_key, {
+        shouldDirty: false,
+      });
+      form.setValue("protocol", matchingListener.protocol, {
+        shouldDirty: false,
+      });
+      form.setValue("port", matchingListener.port, {
+        shouldDirty: false,
+      });
+      return;
+    }
+
+    if (availableListeners[0]) {
+      applyListenerSelection(availableListeners[0].listener_key);
+    }
+  }, [availableListeners, form, serverId]);
+
+  function applyListenerSelection(nextListenerKey?: string | null) {
+    const listenerKey = nextListenerKey || "";
+    form.setValue("listener_key", listenerKey);
+
+    if (!listenerKey) {
+      form.setValue("protocol", "");
+      form.setValue("port", 0);
+      return;
+    }
+
+    const selectedListener = availableListeners.find(
+      (listener) => listener.listener_key === listenerKey
+    );
+
+    if (!selectedListener) return;
+
+    form.setValue("protocol", selectedListener.protocol, {
+      shouldDirty: false,
+    });
+    form.setValue("port", selectedListener.port, {
+      shouldDirty: false,
+    });
+  }
 
   function handleServerChange(nextId?: number | null) {
     const id = nextId ?? undefined;
     form.setValue("server_id", id);
 
     if (!id) {
+      form.setValue("listener_key", "");
+      form.setValue("protocol", "");
+      form.setValue("port", 0);
       setAutoFilledFields(new Set());
       return;
     }
 
-    const selectedServer = servers.find((s) => s.id === id);
+    const selectedServer = servers.find((server) => server.id === id);
+
     if (!selectedServer) return;
 
     const currentValues = form.getValues();
-    const fieldsToFill: string[] = [];
+    const nextAutoFilled = new Set<string>();
 
     if (!currentValues.name || autoFilledFields.has("name")) {
-      form.setValue("name", selectedServer.name as string, {
+      form.setValue("name", String(selectedServer.name || ""), {
         shouldDirty: false,
       });
-      fieldsToFill.push("name");
+      nextAutoFilled.add("name");
     }
 
     if (!currentValues.address || autoFilledFields.has("address")) {
-      form.setValue("address", selectedServer.address as string, {
+      form.setValue("address", String(selectedServer.address || ""), {
         shouldDirty: false,
       });
-      fieldsToFill.push("address");
+      nextAutoFilled.add("address");
     }
 
-    const protocols = getAvailableProtocols(id);
-    const firstProtocol = protocols[0];
+    setAutoFilledFields(nextAutoFilled);
 
-    if (
-      firstProtocol &&
-      (!currentValues.protocol || autoFilledFields.has("protocol"))
-    ) {
-      form.setValue("protocol", firstProtocol.protocol, { shouldDirty: false });
-      fieldsToFill.push("protocol");
+    const firstListener = getAvailableListeners(id)[0];
 
-      if (
-        !currentValues.port ||
-        currentValues.port === 0 ||
-        autoFilledFields.has("port")
-      ) {
-        const port = firstProtocol.port || 0;
-        form.setValue("port", port, { shouldDirty: false });
-        fieldsToFill.push("port");
-      }
+    if (firstListener) {
+      form.setValue("listener_key", firstListener.listener_key, {
+        shouldDirty: false,
+      });
+      form.setValue("protocol", firstListener.protocol, {
+        shouldDirty: false,
+      });
+      form.setValue("port", firstListener.port, {
+        shouldDirty: false,
+      });
+      return;
     }
 
-    setAutoFilledFields(new Set(fieldsToFill));
+    form.setValue("listener_key", "");
+    form.setValue("protocol", "");
+    form.setValue("port", 0);
   }
 
   const handleManualFieldChange = (
     fieldName: keyof NodeFormValues,
-    value: any
+    value: string | number | string[] | undefined
   ) => {
-    form.setValue(fieldName, value);
+    form.setValue(fieldName, value as never);
     removeAutoFilledField(fieldName);
   };
 
-  function handleProtocolChange(nextProto?: ProtocolName | null) {
-    const protocol = (nextProto || "") as ProtocolName | "";
-    form.setValue("protocol", protocol);
-
-    if (!(protocol && serverId)) {
-      removeAutoFilledField("protocol");
-      return;
-    }
-
-    const currentValues = form.getValues();
-    const isPortAutoFilled = autoFilledFields.has("port");
-
-    removeAutoFilledField("protocol");
-
-    if (!currentValues.port || currentValues.port === 0 || isPortAutoFilled) {
-      const protocolData = availableProtocols.find(
-        (p) => p.protocol === protocol
-      );
-
-      if (protocolData) {
-        const port = protocolData.port || 0;
-        form.setValue("port", port, { shouldDirty: false });
-        addAutoFilledField("port");
-      }
-    }
-  }
-
   async function handleSubmit(values: NodeFormValues) {
     const result = await onSubmit(values);
+
     if (result) {
       setOpen(false);
       setAutoFilledFields(new Set());
@@ -241,7 +272,13 @@ export default function NodeForm(props: {
       <SheetTrigger asChild>
         <Button
           onClick={() => {
-            form.reset();
+            form.reset({
+              ...emptyValues,
+              ...initialValues,
+              listener_key:
+                (initialValues as NodeFormPayload | undefined)?.listener_key ||
+                "",
+            });
             setAutoFilledFields(new Set());
           }}
         >
@@ -264,10 +301,10 @@ export default function NodeForm(props: {
                     <FormLabel>{t("server", "Server")}</FormLabel>
                     <FormControl>
                       <Combobox<number, false>
-                        onChange={(v) => handleServerChange(v)}
-                        options={servers.map((s) => ({
-                          value: s.id,
-                          label: `${s.name} (${(s.address as any) || ""})`,
+                        onChange={(value) => handleServerChange(value)}
+                        options={servers.map((server) => ({
+                          value: server.id,
+                          label: `${server.name} (${String(server.address || "")})`,
                         }))}
                         placeholder={t("select_server", "Select server…")}
                         value={field.value}
@@ -277,22 +314,34 @@ export default function NodeForm(props: {
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
-                name="protocol"
+                name="listener_key"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("protocol", "Protocol")}</FormLabel>
+                    <FormLabel>{t("listener", "Listener")}</FormLabel>
                     <FormControl>
                       <Combobox<string, false>
-                        onChange={(v) =>
-                          handleProtocolChange((v as ProtocolName) || null)
-                        }
-                        options={availableProtocols.map((p) => ({
-                          value: p.protocol,
-                          label: `${p.protocol}${p.port ? ` (${p.port})` : ""}`,
-                        }))}
-                        placeholder={t("select_protocol", "Select protocol…")}
+                        onChange={(value) => applyListenerSelection(value)}
+                        options={[
+                          ...availableListeners.map((listener) => ({
+                            value: listener.listener_key,
+                            label: `${listener.listener_name} | ${listener.protocol}:${listener.port}`,
+                          })),
+                          ...(!field.value ||
+                          availableListeners.some(
+                            (listener) => listener.listener_key === field.value
+                          )
+                            ? []
+                            : [
+                                {
+                                  value: field.value,
+                                  label: `${field.value} (${t("unavailable", "Unavailable")})`,
+                                },
+                              ]),
+                        ]}
+                        placeholder={t("select_listener", "Select listener…")}
                         value={field.value}
                       />
                     </FormControl>
@@ -300,6 +349,7 @@ export default function NodeForm(props: {
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
                 name="name"
@@ -309,10 +359,24 @@ export default function NodeForm(props: {
                     <FormControl>
                       <EnhancedInput
                         {...field}
-                        onValueChange={(v) =>
-                          handleManualFieldChange("name", v as string)
+                        onValueChange={(value) =>
+                          handleManualFieldChange("name", value as string)
                         }
                       />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="protocol"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("protocol", "Protocol")}</FormLabel>
+                    <FormControl>
+                      <EnhancedInput {...field} disabled />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -328,8 +392,8 @@ export default function NodeForm(props: {
                     <FormControl>
                       <EnhancedInput
                         {...field}
-                        onValueChange={(v) =>
-                          handleManualFieldChange("address", v as string)
+                        onValueChange={(value) =>
+                          handleManualFieldChange("address", value as string)
                         }
                       />
                     </FormControl>
@@ -347,11 +411,9 @@ export default function NodeForm(props: {
                     <FormControl>
                       <EnhancedInput
                         {...field}
+                        disabled
                         max={65_535}
                         min={1}
-                        onValueChange={(v) =>
-                          handleManualFieldChange("port", Number(v))
-                        }
                         placeholder="1-65535"
                         type="number"
                       />
@@ -360,6 +422,7 @@ export default function NodeForm(props: {
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
                 name="tags"
@@ -368,7 +431,7 @@ export default function NodeForm(props: {
                     <FormLabel>{t("tags", "Tags")}</FormLabel>
                     <FormControl>
                       <TagInput
-                        onChange={(v) => form.setValue(field.name, v)}
+                        onChange={(value) => form.setValue(field.name, value)}
                         options={existingTags}
                         placeholder={t(
                           "tags_placeholder",

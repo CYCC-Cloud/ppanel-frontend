@@ -23,13 +23,17 @@ import { useNode } from "@/stores/node";
 import { useServer } from "@/stores/server";
 import NodeForm from "./node-form";
 
+type NodePayload = API.Node & { listener_key?: string };
+type CreateNodePayload = API.CreateNodeRequest & { listener_key: string };
+type UpdateNodePayload = API.UpdateNodeRequest & { listener_key: string };
+
 export default function Nodes() {
   const { t } = useTranslation("nodes");
   const ref = useRef<ProTableActions>(null);
   const [loading, setLoading] = useState(false);
 
   // Use our zustand store for server data
-  const { getServerName, getServerAddress, getProtocolPort } = useServer();
+  const { getServerName, getServerAddress, getListenerByKey } = useServer();
   const { fetchNodes, fetchTags } = useNode();
 
   return (
@@ -44,10 +48,17 @@ export default function Nodes() {
             onSubmit={async (values) => {
               setLoading(true);
               try {
-                const body: API.UpdateNodeRequest = {
-                  ...row,
-                  ...values,
-                } as any;
+                const body: UpdateNodePayload = {
+                  id: row.id,
+                  enabled: row.enabled,
+                  name: values.name,
+                  tags: values.tags || [],
+                  port: Number(values.port),
+                  address: values.address,
+                  server_id: Number(values.server_id),
+                  protocol: values.protocol,
+                  listener_key: values.listener_key,
+                };
                 await updateNode(body);
                 toast.success(t("updated", "Updated"));
                 ref.current?.refresh();
@@ -93,7 +104,7 @@ export default function Nodes() {
                 updated_at: _updated_at,
                 created_at: _created_at,
                 ...rest
-              } = row as any;
+              } = row as NodePayload;
               await createNode({
                 ...rest,
                 enabled: false,
@@ -172,8 +183,18 @@ export default function Nodes() {
         {
           id: "protocol",
           header: ` ${t("protocol", "Protocol")}:${t("port", "Port")}`,
-          cell: ({ row }) =>
-            `${row.original.protocol}:${getProtocolPort(row.original.server_id, row.original.protocol)}`,
+          cell: ({ row }) => {
+            const listener = getListenerByKey(
+              row.original.server_id,
+              (row.original as NodePayload).listener_key
+            );
+
+            if (!listener) {
+              return `${row.original.protocol}:${row.original.port || "—"}`;
+            }
+
+            return `${listener.listener_name} (${listener.protocol}:${listener.port})`;
+          },
         },
         {
           accessorKey: "tags",
@@ -199,10 +220,11 @@ export default function Nodes() {
             onSubmit={async (values) => {
               setLoading(true);
               try {
-                const body: API.CreateNodeRequest = {
+                const body: CreateNodePayload = {
                   name: values.name,
                   server_id: Number(values.server_id!),
                   protocol: values.protocol,
+                  listener_key: values.listener_key,
                   address: values.address,
                   port: Number(values.port!),
                   tags: values.tags || [],

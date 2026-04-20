@@ -264,6 +264,7 @@ declare namespace API {
     address: string;
     server_id: number;
     protocol: string;
+    listener_key: string;
     enabled: boolean;
   };
 
@@ -1359,6 +1360,8 @@ declare namespace API {
     address: string;
     server_id: number;
     protocol: string;
+    listener_key: string;
+    listener_name: string;
     enabled: boolean;
     sort?: number;
     created_at: number;
@@ -1539,6 +1542,8 @@ declare namespace API {
 
   type Protocol = {
     type: string;
+    listener_key?: string;
+    listener_name?: string | null;
     port: number;
     enable: boolean;
     security?: string;
@@ -2278,6 +2283,7 @@ declare namespace API {
     address: string;
     server_id: number;
     protocol: string;
+    listener_key: string;
     enabled: boolean;
   };
 

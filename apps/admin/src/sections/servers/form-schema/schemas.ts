@@ -19,7 +19,13 @@ const nullableBool = z.boolean().nullish();
 const nullablePort = z.number().int().min(0).max(65_535).nullish();
 const nullableRatio = z.number().min(0).nullish();
 
+const listenerFields = {
+  listener_key: z.string().optional(),
+  listener_name: nullableString,
+};
+
 const ss = z.object({
+  ...listenerFields,
   ratio: nullableRatio,
   type: z.literal("shadowsocks"),
   enable: nullableBool,
@@ -35,6 +41,7 @@ const ss = z.object({
 });
 
 const vmess = z.object({
+  ...listenerFields,
   ratio: nullableRatio,
   type: z.literal("vmess"),
   enable: nullableBool,
@@ -53,6 +60,7 @@ const vmess = z.object({
 });
 
 const vless = z.object({
+  ...listenerFields,
   ratio: nullableRatio,
   type: z.literal("vless"),
   enable: nullableBool,
@@ -87,6 +95,7 @@ const vless = z.object({
 });
 
 const trojan = z.object({
+  ...listenerFields,
   ratio: nullableRatio,
   type: z.literal("trojan"),
   enable: nullableBool,
@@ -105,6 +114,7 @@ const trojan = z.object({
 });
 
 const hysteria = z.object({
+  ...listenerFields,
   ratio: nullableRatio,
   type: z.literal("hysteria"),
   enable: nullableBool,
@@ -125,6 +135,7 @@ const hysteria = z.object({
 });
 
 const tuic = z.object({
+  ...listenerFields,
   ratio: nullableRatio,
   type: z.literal("tuic"),
   enable: nullableBool,
@@ -144,6 +155,7 @@ const tuic = z.object({
 });
 
 const anytls = z.object({
+  ...listenerFields,
   ratio: nullableRatio,
   type: z.literal("anytls"),
   enable: nullableBool,
@@ -159,6 +171,7 @@ const anytls = z.object({
 });
 
 const socks = z.object({
+  ...listenerFields,
   ratio: nullableRatio,
   type: z.literal("socks"),
   enable: nullableBool,
@@ -166,6 +179,7 @@ const socks = z.object({
 });
 
 const naive = z.object({
+  ...listenerFields,
   ratio: nullableRatio,
   type: z.literal("naive"),
   enable: nullableBool,
@@ -180,6 +194,7 @@ const naive = z.object({
 });
 
 const http = z.object({
+  ...listenerFields,
   ratio: nullableRatio,
   type: z.literal("http"),
   enable: nullableBool,
@@ -194,6 +209,7 @@ const http = z.object({
 });
 
 const mieru = z.object({
+  ...listenerFields,
   ratio: nullableRatio,
   type: z.literal("mieru"),
   enable: nullableBool,

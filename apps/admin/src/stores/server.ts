@@ -1,6 +1,13 @@
 import { filterServerList } from "@workspace/ui/services/admin/server";
 import { create } from "zustand";
 
+export interface ServerListenerOption {
+  listener_key: string;
+  listener_name: string;
+  protocol: string;
+  port: number;
+}
+
 interface ServerState {
   // Data
   servers: API.Server[];
@@ -17,10 +24,11 @@ interface ServerState {
   getServerName: (serverId?: number) => string;
   getServerAddress: (serverId?: number) => string;
   getServerEnabledProtocols: (serverId: number) => API.Protocol[];
-  getProtocolPort: (serverId?: number, protocol?: string) => string;
-  getAvailableProtocols: (
-    serverId?: number
-  ) => Array<{ protocol: string; port: number }>;
+  getAvailableListeners: (serverId?: number) => ServerListenerOption[];
+  getListenerByKey: (
+    serverId?: number,
+    listenerKey?: string
+  ) => ServerListenerOption | undefined;
 }
 
 export const useServerStore = create<ServerState>((set, get) => ({
@@ -69,21 +77,37 @@ export const useServerStore = create<ServerState>((set, get) => ({
     return server?.protocols?.filter((p) => p.enable) || [];
   },
 
-  getProtocolPort: (serverId?: number, protocol?: string) => {
-    if (!(serverId && protocol)) return "—";
-    const enabledProtocols = get().getServerEnabledProtocols(serverId);
-    const protocolConfig = enabledProtocols.find((p) => p.type === protocol);
-    return protocolConfig?.port ? String(protocolConfig.port) : "—";
-  },
-
-  getAvailableProtocols: (serverId?: number) => {
+  getAvailableListeners: (serverId?: number) => {
     if (!serverId) return [];
+
     return get()
       .getServerEnabledProtocols(serverId)
-      .map((p) => ({
-        protocol: p.type,
-        port: p.port,
-      }));
+      .flatMap((protocol) => {
+        const listenerKey = (
+          protocol as API.Protocol & { listener_key?: string }
+        ).listener_key;
+
+        if (!listenerKey) return [];
+
+        return [
+          {
+            listener_key: listenerKey,
+            listener_name:
+              (protocol as API.Protocol & { listener_name?: string | null })
+                .listener_name || protocol.type,
+            protocol: protocol.type,
+            port: protocol.port,
+          },
+        ];
+      });
+  },
+
+  getListenerByKey: (serverId?: number, listenerKey?: string) => {
+    if (!(serverId && listenerKey)) return;
+
+    return get()
+      .getAvailableListeners(serverId)
+      .find((listener) => listener.listener_key === listenerKey);
   },
 }));
 
@@ -104,8 +128,8 @@ export const useServer = () => {
     getServerName: store.getServerName,
     getServerAddress: store.getServerAddress,
     getServerEnabledProtocols: store.getServerEnabledProtocols,
-    getProtocolPort: store.getProtocolPort,
-    getAvailableProtocols: store.getAvailableProtocols,
+    getAvailableListeners: store.getAvailableListeners,
+    getListenerByKey: store.getListenerByKey,
   };
 };
 

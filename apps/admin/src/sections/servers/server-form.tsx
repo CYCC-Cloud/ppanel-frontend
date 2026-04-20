@@ -52,10 +52,13 @@ import {
   type FieldConfig,
   formSchema,
   getLabel,
-  getProtocolDefaultConfig,
-  protocols as PROTOCOLS,
+  protocols as LISTENER_TYPES,
   useProtocolFields,
 } from "./form-schema";
+import {
+  appendListenerDraft,
+  preserveExistingListenerKeys,
+} from "./listener-utils";
 
 function DynamicField({
   field,
@@ -358,8 +361,11 @@ export default function ServerForm(props: {
   const { t } = useTranslation("servers");
   const [open, setOpen] = useState(false);
   const [accordionValue, setAccordionValue] = useState<string>();
+  const [selectedType, setSelectedType] = useState<
+    (typeof LISTENER_TYPES)[number]
+  >(LISTENER_TYPES[0]);
 
-  const { isProtocolUsedInNodes } = useNode();
+  const { isListenerUsedInNodes } = useNode();
   const PROTOCOL_FIELDS = useProtocolFields();
 
   const form = useForm({
@@ -385,26 +391,24 @@ export default function ServerForm(props: {
         country: "",
         city: "",
         ...initialValues,
-        protocols: PROTOCOLS.map((type) => {
-          const existingProtocol = initialValues.protocols?.find(
-            (p) => p.type === type
-          );
-          const defaultConfig = getProtocolDefaultConfig(type);
-          return existingProtocol
-            ? { ...defaultConfig, ...existingProtocol }
-            : defaultConfig;
-        }),
+        protocols: (initialValues.protocols || []).map((protocol) => ({
+          ...appendListenerDraft(
+            protocol.type as (typeof LISTENER_TYPES)[number]
+          ),
+          ...protocol,
+        })),
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialValues]);
 
   async function handleSubmit(values: Record<string, any>) {
-    const filteredProtocols = (values?.protocols || []).filter(
-      (protocol: any) => {
+    const filteredProtocols = preserveExistingListenerKeys(
+      (initialValues?.protocols || []) as Record<string, any>[],
+      (values?.protocols || []).filter((protocol: any) => {
         const port = Number(protocol?.port);
         return protocol && Number.isFinite(port) && port > 0 && port <= 65_535;
-      }
+      })
     );
 
     const result = {
@@ -428,13 +432,12 @@ export default function ServerForm(props: {
         <Button
           onClick={() => {
             if (!initialValues) {
-              const full = PROTOCOLS.map((t) => getProtocolDefaultConfig(t));
               form.reset({
                 name: "",
                 address: "",
                 country: "",
                 city: "",
-                protocols: full,
+                protocols: [],
               });
             }
             setOpen(true);
@@ -522,14 +525,52 @@ export default function ServerForm(props: {
               </div>
               <div className="my-3">
                 <h3 className="font-semibold text-foreground text-sm">
-                  {t("protocol_configurations", "Protocol Configurations")}
+                  {t("protocol_configurations", "Listener Configurations")}
                 </h3>
                 <p className="mt-1 text-muted-foreground text-xs">
                   {t(
                     "protocol_configurations_desc",
-                    "Enable and configure the required protocol types"
+                    "Add and configure the listeners this server should expose"
                   )}
                 </p>
+              </div>
+
+              <div className="mb-3 flex flex-col gap-2 rounded-lg border p-3 md:flex-row md:items-end">
+                <div className="flex-1">
+                  <FormLabel>{t("listener_type", "Listener Type")}</FormLabel>
+                  <Select
+                    onValueChange={(value) =>
+                      setSelectedType(value as (typeof LISTENER_TYPES)[number])
+                    }
+                    value={selectedType}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LISTENER_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          <span className="capitalize">{type}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  onClick={() => {
+                    const nextProtocols = [
+                      ...((form.getValues("protocols") as any[]) || []),
+                      appendListenerDraft(selectedType),
+                    ];
+                    form.setValue("protocols", nextProtocols, {
+                      shouldDirty: true,
+                    });
+                    setAccordionValue(`listener-${nextProtocols.length - 1}`);
+                  }}
+                  type="button"
+                >
+                  {t("add_listener", "Add Listener")}
+                </Button>
               </div>
 
               <Accordion
@@ -539,29 +580,41 @@ export default function ServerForm(props: {
                 type="single"
                 value={accordionValue}
               >
-                {PROTOCOLS.map((type) => {
-                  const i = Math.max(0, PROTOCOLS.indexOf(type));
+                {(protocolsValues || []).map((protocol, i) => {
+                  const type = protocol?.type as string;
                   const current = (protocolsValues[i] || {}) as Record<
                     string,
                     any
                   >;
                   const isEnabled = current?.enable;
                   const fields = PROTOCOL_FIELDS[type] || [];
+                  const itemValue = `listener-${i}`;
+                  const listenerTitle = current.listener_name || type;
+                  const isUsedInNodes = Boolean(
+                    initialValues?.id &&
+                      isListenerUsedInNodes(
+                        initialValues.id,
+                        current.listener_key
+                      )
+                  );
                   return (
                     <AccordionItem
                       className="mb-2 rounded-lg border"
-                      key={type}
-                      value={type}
+                      key={current.listener_key || `${type}-${i}`}
+                      value={itemValue}
                     >
                       <AccordionTrigger className="px-4 py-3 hover:no-underline">
                         <div className="flex w-full items-center justify-between">
                           <div className="flex flex-col items-start gap-1">
                             <div className="flex items-center gap-1">
                               <span className="font-medium capitalize">
-                                {type}
+                                {listenerTitle}
                               </span>
+                              <Badge className="text-xs" variant="secondary">
+                                {type}
+                              </Badge>
                               {current.transport && (
-                                <Badge className="text-xs" variant="secondary">
+                                <Badge className="text-xs" variant="outline">
                                   {current.transport.toUpperCase()}
                                 </Badge>
                               )}
@@ -595,14 +648,7 @@ export default function ServerForm(props: {
                           <Switch
                             checked={!!isEnabled}
                             className="mr-2"
-                            disabled={Boolean(
-                              initialValues?.id &&
-                                isProtocolUsedInNodes(
-                                  initialValues?.id || 0,
-                                  type
-                                ) &&
-                                isEnabled
-                            )}
+                            disabled={isUsedInNodes}
                             onCheckedChange={(checked) => {
                               form.setValue(`protocols.${i}.enable`, checked);
                             }}
@@ -612,6 +658,55 @@ export default function ServerForm(props: {
                       </AccordionTrigger>
                       <AccordionContent className="px-4 pt-0 pb-4">
                         <div className="-mx-4 space-y-4 rounded-b-lg border-t px-4 pt-4">
+                          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                            <div className="w-full md:max-w-sm">
+                              <FormField
+                                control={control}
+                                name={`protocols.${i}.listener_name`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>
+                                      {t("listener_name", "Listener Name")}
+                                    </FormLabel>
+                                    <FormControl>
+                                      <EnhancedInput
+                                        {...field}
+                                        onValueChange={(value) =>
+                                          field.onChange(value || null)
+                                        }
+                                        placeholder={t(
+                                          "listener_name_placeholder",
+                                          "Optional display name"
+                                        )}
+                                        value={field.value ?? ""}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                            <Button
+                              disabled={isUsedInNodes}
+                              onClick={() => {
+                                const nextProtocols = (
+                                  (form.getValues("protocols") as any[]) || []
+                                ).filter((_item, index) => index !== i);
+                                form.setValue("protocols", nextProtocols, {
+                                  shouldDirty: true,
+                                });
+                                setAccordionValue(undefined);
+                              }}
+                              type="button"
+                              variant="outline"
+                            >
+                              <Icon
+                                className="mr-2 h-4 w-4"
+                                icon="mdi:delete-outline"
+                              />
+                              {t("remove_listener", "Remove Listener")}
+                            </Button>
+                          </div>
                           {renderGroupCard(
                             t("basic", "Basic Configuration"),
                             fields,

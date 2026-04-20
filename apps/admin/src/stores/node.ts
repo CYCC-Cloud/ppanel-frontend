@@ -22,6 +22,7 @@ interface NodeState {
   // Getters
   getNodeById: (nodeId: number) => API.Node | undefined;
   isProtocolUsedInNodes: (serverId: number, protocolType: string) => boolean;
+  isListenerUsedInNodes: (serverId: number, listenerKey?: string) => boolean;
   isServerReferencedByNodes: (serverId: number) => boolean;
   getNodesByTag: (tag: string) => API.Node[];
   getNodesWithoutTags: () => API.Node[];
@@ -83,6 +84,17 @@ export const useNodeStore = create<NodeState>((set, get) => ({
       (node) => node.server_id === serverId && node.protocol === protocolType
     ),
 
+  isListenerUsedInNodes: (serverId: number, listenerKey?: string) => {
+    if (!listenerKey) return false;
+
+    return get().nodes.some((node) => {
+      const currentListenerKey = (node as API.Node & { listener_key?: string })
+        .listener_key;
+
+      return node.server_id === serverId && currentListenerKey === listenerKey;
+    });
+  },
+
   isServerReferencedByNodes: (serverId: number) =>
     get().nodes.some((node) => node.server_id === serverId),
 
@@ -132,6 +144,7 @@ export const useNode = () => {
     fetchTags: store.fetchTags,
     getNodeById: store.getNodeById,
     isProtocolUsedInNodes: store.isProtocolUsedInNodes,
+    isListenerUsedInNodes: store.isListenerUsedInNodes,
     isServerReferencedByNodes: store.isServerReferencedByNodes,
     getNodesByTag: store.getNodesByTag,
     getNodesWithoutTags: store.getNodesWithoutTags,
