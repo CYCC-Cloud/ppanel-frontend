@@ -7,7 +7,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import React from "react";
+import type React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import NodeForm from "./node-form";
 
@@ -95,25 +95,30 @@ vi.mock("@workspace/ui/composed/combobox", () => ({
   },
 }));
 
+function EnhancedInput({
+  onValueChange,
+  ref,
+  value,
+  type = "text",
+  ...props
+}: any & { ref?: React.Ref<HTMLInputElement> }) {
+  return (
+    <input
+      {...props}
+      onChange={(event) => {
+        const nextValue =
+          type === "number" ? Number(event.target.value) : event.target.value;
+        onValueChange?.(nextValue);
+      }}
+      ref={ref}
+      type={type}
+      value={value ?? ""}
+    />
+  );
+}
+
 vi.mock("@workspace/ui/composed/enhanced-input", () => ({
-  EnhancedInput: React.forwardRef<HTMLInputElement, any>(function EnhancedInput(
-    { onValueChange, value, type = "text", ...props },
-    ref
-  ) {
-    return (
-      <input
-        {...props}
-        onChange={(event) => {
-          const nextValue =
-            type === "number" ? Number(event.target.value) : event.target.value;
-          onValueChange?.(nextValue);
-        }}
-        ref={ref}
-        type={type}
-        value={value ?? ""}
-      />
-    );
-  }),
+  EnhancedInput,
 }));
 
 vi.mock("@workspace/ui/composed/tag-input", () => ({

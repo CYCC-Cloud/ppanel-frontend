@@ -16,10 +16,20 @@
   "enabled": "已启用",
   "enabled_off": "已禁用",
   "enabled_on": "已启用",
+  "errors": {
+    "listenerRequired": "请选择监听器",
+    "nameRequired": "请输入名称",
+    "portRange": "端口必须在 1 到 65535 之间",
+    "protocolRequired": "请选择协议",
+    "serverAddrRequired": "请输入入口地址",
+    "serverRequired": "请选择服务器"
+  },
+  "listener": "监听器",
   "name": "名称",
   "pageTitle": "节点",
   "port": "端口",
   "protocol": "协议",
+  "select_listener": "选择监听器…",
   "select_protocol": "选择协议…",
   "select_server": "选择服务器…",
   "server": "服务器",
@@ -27,5 +37,6 @@
   "tags": "标签",
   "tags_description": "权限分组标签（包含计划绑定和投递策略）。",
   "tags_placeholder": "使用回车或逗号 (,) 添加多个标签",
+  "unavailable": "不可用",
   "updated": "已更新"
 }

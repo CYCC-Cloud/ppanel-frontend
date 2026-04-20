@@ -16,10 +16,20 @@
   "enabled": "Enabled",
   "enabled_off": "Disabled",
   "enabled_on": "Enabled",
+  "errors": {
+    "listenerRequired": "Please select a listener",
+    "nameRequired": "Please enter a name",
+    "portRange": "Port must be between 1 and 65535",
+    "protocolRequired": "Please select a protocol",
+    "serverAddrRequired": "Please enter an entry address",
+    "serverRequired": "Please select a server"
+  },
+  "listener": "Listener",
   "name": "Name",
   "pageTitle": "Nodes",
   "port": "Port",
   "protocol": "Protocol",
+  "select_listener": "Select listener…",
   "select_protocol": "Select protocol…",
   "select_server": "Select server…",
   "server": "Server",
@@ -27,5 +37,6 @@
   "tags": "Tags",
   "tags_description": "Permission grouping tag (incl. plan binding and delivery policies).",
   "tags_placeholder": "Use Enter or comma (,) to add multiple tags",
+  "unavailable": "Unavailable",
   "updated": "Updated"
 }
