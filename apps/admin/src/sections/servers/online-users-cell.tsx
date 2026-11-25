@@ -129,12 +129,15 @@ export default function OnlineUsersCell({
                   const ips = row.original.ip;
                   return (
                     <div className="flex min-w-0 flex-col gap-1">
+                      {/* Keyed by listener: one address can be online on two
+                          listeners of the same protocol type, which the
+                          protocol alone cannot distinguish. */}
                       {ips.map((item) => (
                         <div
                           className="whitespace-nowrap text-sm"
-                          key={`${item.protocol}-${item.ip}`}
+                          key={`${item.listener_key}-${item.ip}`}
                         >
-                          <Badge>{item.protocol}</Badge>
+                          <Badge>{item.listener_name || item.protocol}</Badge>
                           <IpLink className="ml-1 font-medium" ip={item.ip} />
                         </div>
                       ))}

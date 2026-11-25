@@ -60,6 +60,14 @@ const common = {
   ratio: nullableRatio,
   enable: nullableBool,
   port: nullablePort,
+  // Assigned by the backend. A listener submitted without one is new, and the
+  // key it is given then stays stable for the listener's lifetime.
+  listener_key: z.string().optional(),
+  listener_name: nullableString,
+  // Form-local identity so a listener keeps its accordion state, React key and
+  // validation focus while it has no listener key yet, and while listeners
+  // above it are removed. Stripped before submission.
+  draft_id: z.string().optional(),
 };
 
 const certificate = {
@@ -492,14 +500,40 @@ export const protocolApiScheme = z.discriminatedUnion("type", [
   nowhere,
 ]);
 
-export const formSchema = z.object({
-  name: z.string().min(1),
-  address: z.string().min(1),
-  country: z.string().optional(),
-  city: z.string().optional(),
-  protocols: z.array(
-    protocolApiScheme.superRefine((protocol, ctx) => {
-      refineProtocol(protocol as Record<string, unknown>, ctx);
-    })
-  ),
-});
+export const formSchema = z
+  .object({
+    name: z.string().min(1),
+    address: z.string().min(1),
+    country: z.string().optional(),
+    city: z.string().optional(),
+    protocols: z.array(
+      protocolApiScheme.superRefine((protocol, ctx) => {
+        refineProtocol(protocol as Record<string, unknown>, ctx);
+      })
+    ),
+  })
+  // Per-item refinement cannot see siblings, but the backend rejects two
+  // enabled listeners sharing a port. Report it on the offending field instead
+  // of letting the save fail server-side. A disabled listener keeps its port
+  // so it can be re-enabled, which is why only enabled ones are compared.
+  .superRefine((values, ctx) => {
+    const seen = new Map<number, number>();
+
+    for (const [index, protocol] of values.protocols.entries()) {
+      if (!(protocol.enable && protocol.port)) continue;
+
+      const previous = seen.get(protocol.port);
+      if (previous === undefined) {
+        seen.set(protocol.port, index);
+        continue;
+      }
+
+      for (const collidingIndex of [previous, index]) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["protocols", collidingIndex, "port"],
+          message: `Port ${protocol.port} is already used by another enabled listener`,
+        });
+      }
+    }
+  });

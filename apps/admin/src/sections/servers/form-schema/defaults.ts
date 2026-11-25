@@ -5,6 +5,11 @@ const base = {
   enable: false,
   port: null,
   ratio: 1,
+  // Empty means "not yet persisted": the backend mints the key and then keeps
+  // whatever it minted, so a listener's identity never changes underneath the
+  // nodes bound to it.
+  listener_key: "",
+  listener_name: null,
 };
 
 const certificate = {

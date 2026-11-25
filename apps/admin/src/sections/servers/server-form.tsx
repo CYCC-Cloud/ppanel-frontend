@@ -41,6 +41,7 @@ import {
   SheetTrigger,
 } from "@workspace/ui/components/sheet";
 import { Switch } from "@workspace/ui/components/switch";
+import { Combobox } from "@workspace/ui/composed/combobox";
 import { EnhancedInput } from "@workspace/ui/composed/enhanced-input";
 import { Icon } from "@workspace/ui/composed/icon";
 import { cn } from "@workspace/ui/lib/utils";
@@ -50,12 +51,14 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useNode } from "@/stores/node";
 import {
+  buildListenerDraft,
+  catalogueType,
   type FieldConfig,
   formSchema,
   getLabel,
-  getProtocolDefaultConfig,
-  getProtocolFormValues,
+  getListenerFormValues,
   getUneditableProtocols,
+  type ListenerDraft,
   protocols as PROTOCOLS,
   type ProtocolType,
   preserveUneditableProtocols,
@@ -490,7 +493,7 @@ export default function ServerForm(props: {
   const [open, setOpen] = useState(false);
   const [accordionValue, setAccordionValue] = useState("");
 
-  const { isProtocolUsedInNodes } = useNode();
+  const { isListenerUsedInNodes } = useNode();
   const PROTOCOL_FIELDS = useProtocolFields();
   const uneditableProtocols = getUneditableProtocols(initialValues?.protocols);
 
@@ -519,14 +522,14 @@ export default function ServerForm(props: {
         country: "",
         city: "",
         ...initialValues,
-        protocols: getProtocolFormValues(initialValues.protocols),
+        protocols: getListenerFormValues(initialValues.protocols),
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialValues]);
 
   function validateEnabledProtocols(values: Record<string, any>) {
-    let firstInvalidProtocol: ProtocolType | undefined;
+    let firstInvalidDraftId: string | undefined;
 
     for (const [index, protocol] of (values?.protocols || []).entries()) {
       if (!protocol?.enable) continue;
@@ -561,7 +564,7 @@ export default function ServerForm(props: {
                 }
               ),
             });
-            firstInvalidProtocol ??= protocolType;
+            firstInvalidDraftId ??= protocol.draft_id;
           }
           continue;
         }
@@ -580,7 +583,7 @@ export default function ServerForm(props: {
                 { field: field.label }
               ),
             });
-            firstInvalidProtocol ??= protocolType;
+            firstInvalidDraftId ??= protocol.draft_id;
           }
           continue;
         }
@@ -597,13 +600,13 @@ export default function ServerForm(props: {
               field: field.label,
             }),
           });
-          firstInvalidProtocol ??= protocolType;
+          firstInvalidDraftId ??= protocol.draft_id;
         }
       }
     }
 
-    if (firstInvalidProtocol) {
-      setAccordionValue(firstInvalidProtocol);
+    if (firstInvalidDraftId) {
+      setAccordionValue(firstInvalidDraftId);
       return false;
     }
 
@@ -617,9 +620,11 @@ export default function ServerForm(props: {
       return;
     }
 
-    const filteredProtocols = (values?.protocols || [])
-      .filter((protocol: any) => protocol?.enable)
-      .map((protocol: any) => {
+    const submittedProtocols = (values?.protocols || [])
+      // Disabled listeners are kept: dropping one would delete its listener
+      // key, and the backend lets a disabled listener hold its port so it can
+      // be re-enabled without reconfiguration.
+      .map((protocol: ListenerDraft) => {
         const protocolType = protocol.type as ProtocolType;
         const fields = PROTOCOL_FIELDS[protocolType] || [];
         const fieldNames = [...new Set(fields.map((field) => field.name))];
@@ -633,6 +638,10 @@ export default function ServerForm(props: {
         );
         const normalized = Object.fromEntries(
           Object.entries(protocol).filter(([key]) => {
+            if (key === "draft_id") {
+              return false;
+            }
+
             if (
               hiddenFieldNames.has(key) &&
               !PRESERVED_HIDDEN_PROTOCOL_FIELDS.has(key)
@@ -659,7 +668,7 @@ export default function ServerForm(props: {
       city: values.city,
       address: values.address,
       protocols: preserveUneditableProtocols(
-        filteredProtocols,
+        submittedProtocols,
         initialValues?.protocols
       ) as API.Protocol[],
     };
@@ -673,13 +682,14 @@ export default function ServerForm(props: {
 
   function handleOpenChange(nextOpen: boolean) {
     if (nextOpen && !initialValues) {
-      const full = PROTOCOLS.map((type) => getProtocolDefaultConfig(type));
       form.reset({
         name: "",
         address: "",
         country: "",
         city: "",
-        protocols: full,
+        // A new server starts with no listeners; the administrator adds the
+        // ones it should expose.
+        protocols: [],
       });
     }
     setOpen(nextOpen);
@@ -773,16 +783,35 @@ export default function ServerForm(props: {
                   )}
                 />
               </div>
-              <div className="my-3">
-                <h3 className="font-semibold text-foreground text-sm">
-                  {t("protocol_configurations", "Protocol Configurations")}
-                </h3>
-                <p className="mt-1 text-muted-foreground text-xs">
-                  {t(
-                    "protocol_configurations_desc",
-                    "Enable and configure the required protocol types"
-                  )}
-                </p>
+              <div className="my-3 flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-semibold text-foreground text-sm">
+                    {t("protocol_configurations", "Listener Configurations")}
+                  </h3>
+                  <p className="mt-1 text-muted-foreground text-xs">
+                    {t(
+                      "protocol_configurations_desc",
+                      "Add and configure the listeners this server exposes"
+                    )}
+                  </p>
+                </div>
+                <Combobox<string, false>
+                  onChange={(type) => {
+                    if (!type) return;
+                    const draft = buildListenerDraft(catalogueType(type));
+                    form.setValue("protocols", [
+                      ...(protocolsValues || []),
+                      draft,
+                    ]);
+                    setAccordionValue(draft.draft_id as string);
+                  }}
+                  options={PROTOCOLS.map((type) => ({
+                    value: type,
+                    label: type,
+                  }))}
+                  placeholder={t("add_listener", "Add listener")}
+                  value={undefined}
+                />
               </div>
 
               {uneditableProtocols.length > 0 && (
@@ -805,169 +834,222 @@ export default function ServerForm(props: {
                 type="single"
                 value={accordionValue}
               >
-                {PROTOCOLS.map((type) => {
-                  const i = Math.max(0, PROTOCOLS.indexOf(type));
-                  const current = (protocolsValues[i] || {}) as Record<
-                    string,
-                    any
-                  >;
-                  const isEnabled = current?.enable;
-                  const fields = PROTOCOL_FIELDS[type] || [];
-                  return (
-                    <AccordionItem
-                      className="mb-2 rounded-lg border"
-                      key={type}
-                      value={type}
-                    >
-                      <div className="flex items-center pr-4">
-                        <div className="min-w-0 flex-1">
-                          <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                            <div className="flex w-full items-center justify-between">
-                              <div className="flex flex-col items-start gap-1">
-                                <div className="flex items-center gap-1">
-                                  <span className="font-medium capitalize">
-                                    {type}
-                                  </span>
-                                  {current.transport && (
+                {(protocolsValues || []).map(
+                  (current: ListenerDraft, i: number) => {
+                    const type = catalogueType(current?.type);
+                    const isEnabled = current?.enable;
+                    const fields = PROTOCOL_FIELDS[type] || [];
+                    const draftId = current?.draft_id as string;
+                    const usedByNodes = Boolean(
+                      initialValues?.id &&
+                        isListenerUsedInNodes(
+                          initialValues.id,
+                          current?.listener_key
+                        )
+                    );
+                    return (
+                      <AccordionItem
+                        className="mb-2 rounded-lg border"
+                        key={draftId}
+                        value={draftId}
+                      >
+                        <div className="flex items-center pr-4">
+                          <div className="min-w-0 flex-1">
+                            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                              <div className="flex w-full items-center justify-between">
+                                <div className="flex flex-col items-start gap-1">
+                                  <div className="flex items-center gap-1">
+                                    <span className="font-medium">
+                                      {current.listener_name || type}
+                                    </span>
                                     <Badge
                                       className="text-xs"
-                                      variant="secondary"
+                                      variant="outline"
                                     >
-                                      {current.transport.toUpperCase()}
+                                      {type}
                                     </Badge>
-                                  )}
-                                  {current.security &&
-                                    current.security !== "none" && (
+                                    {current.transport && (
                                       <Badge
                                         className="text-xs"
-                                        variant="outline"
+                                        variant="secondary"
                                       >
-                                        {current.security.toUpperCase()}
+                                        {current.transport.toUpperCase()}
                                       </Badge>
                                     )}
-                                  {current.port && (
-                                    <Badge className="text-xs">
-                                      {current.port}
-                                    </Badge>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <span
-                                    className={cn(
-                                      "text-xs",
-                                      isEnabled
-                                        ? "text-green-500"
-                                        : "text-muted-foreground"
+                                    {current.security &&
+                                      current.security !== "none" && (
+                                        <Badge
+                                          className="text-xs"
+                                          variant="outline"
+                                        >
+                                          {current.security.toUpperCase()}
+                                        </Badge>
+                                      )}
+                                    {current.port && (
+                                      <Badge className="text-xs">
+                                        {current.port}
+                                      </Badge>
                                     )}
-                                  >
-                                    {isEnabled
-                                      ? t("enabled", "Enabled")
-                                      : t("disabled", "Disabled")}
-                                  </span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <span
+                                      className={cn(
+                                        "text-xs",
+                                        isEnabled
+                                          ? "text-green-500"
+                                          : "text-muted-foreground"
+                                      )}
+                                    >
+                                      {isEnabled
+                                        ? t("enabled", "Enabled")
+                                        : t("disabled", "Disabled")}
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </AccordionTrigger>
-                        </div>
-                        <Switch
-                          aria-label={t(
-                            "protocol_enabled",
-                            "Enable {{protocol}}",
-                            { protocol: type }
-                          )}
-                          checked={!!isEnabled}
-                          className="mr-2"
-                          disabled={Boolean(
-                            initialValues?.id &&
-                              isProtocolUsedInNodes(
-                                initialValues?.id || 0,
-                                type
-                              ) &&
-                              isEnabled
-                          )}
-                          onCheckedChange={(checked) => {
-                            form.setValue(`protocols.${i}.enable`, checked);
-                            if (checked) {
-                              setAccordionValue(type);
-                              return;
-                            }
+                            </AccordionTrigger>
+                          </div>
+                          <Switch
+                            aria-label={t(
+                              "protocol_enabled",
+                              "Enable {{protocol}}",
+                              { protocol: current.listener_name || type }
+                            )}
+                            checked={!!isEnabled}
+                            className="mr-2"
+                            disabled={usedByNodes && Boolean(isEnabled)}
+                            onCheckedChange={(checked) => {
+                              form.setValue(`protocols.${i}.enable`, checked);
+                              if (checked) {
+                                setAccordionValue(draftId);
+                                return;
+                              }
 
-                            if (accordionValue === type) {
-                              setAccordionValue("");
-                            }
-                            form.clearErrors(`protocols.${i}` as any);
-                          }}
-                        />
-                      </div>
-                      <AccordionContent className="px-4 pt-0 pb-4">
-                        <div className="-mx-4 space-y-4 rounded-b-lg border-t px-4 pt-4">
-                          {type === "nowhere" && (
-                            <p className="text-muted-foreground text-xs">
-                              {t(
-                                "nowhere_description",
-                                "NW3 · TLS 1.3 · ALPN nw3. Use an NW3 client with the same Morph setting."
-                              )}
-                            </p>
-                          )}
-                          {renderGroupCard(
-                            t("basic", "Basic Configuration"),
-                            fields,
-                            "basic",
-                            control,
-                            form,
-                            i,
-                            current
-                          )}
-                          {renderGroupCard(
-                            t("obfs", "Obfuscation"),
-                            fields,
-                            "obfs",
-                            control,
-                            form,
-                            i,
-                            current
-                          )}
-                          {renderGroupCard(
-                            t("transport", "Transport"),
-                            fields,
-                            "transport",
-                            control,
-                            form,
-                            i,
-                            current
-                          )}
-                          {renderGroupCard(
-                            t("security", "Security"),
-                            fields,
-                            "security",
-                            control,
-                            form,
-                            i,
-                            current
-                          )}
-                          {renderGroupCard(
-                            t("reality", "Reality"),
-                            fields,
-                            "reality",
-                            control,
-                            form,
-                            i,
-                            current
-                          )}
-                          {renderGroupCard(
-                            t("encryption", "Encryption"),
-                            fields,
-                            "encryption",
-                            control,
-                            form,
-                            i,
-                            current
-                          )}
+                              if (accordionValue === draftId) {
+                                setAccordionValue("");
+                              }
+                              form.clearErrors(`protocols.${i}`);
+                            }}
+                          />
+                          <Button
+                            // A node bound to this listener would lose its
+                            // binding, so removal waits until the node is
+                            // rebound or deleted.
+                            disabled={usedByNodes}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              form.setValue(
+                                "protocols",
+                                (protocolsValues || []).filter(
+                                  (_: unknown, index: number) => index !== i
+                                )
+                              );
+                              if (accordionValue === draftId) {
+                                setAccordionValue("");
+                              }
+                            }}
+                            size="icon"
+                            title={t("remove_listener", "Remove listener")}
+                            type="button"
+                            variant="ghost"
+                          >
+                            <Icon icon="mdi:trash-can-outline" />
+                          </Button>
                         </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  );
-                })}
+                        <AccordionContent className="px-4 pt-0 pb-4">
+                          <div className="-mx-4 space-y-4 rounded-b-lg border-t px-4 pt-4">
+                            {type === "nowhere" && (
+                              <p className="text-muted-foreground text-xs">
+                                {t(
+                                  "nowhere_description",
+                                  "NW3 · TLS 1.3 · ALPN nw3. Use an NW3 client with the same Morph setting."
+                                )}
+                              </p>
+                            )}
+                            <FormField
+                              control={control}
+                              name={`protocols.${i}.listener_name`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>
+                                    {t("listener_name", "Listener Name")}
+                                  </FormLabel>
+                                  <FormControl>
+                                    <EnhancedInput
+                                      onValueChange={(value) =>
+                                        field.onChange(value)
+                                      }
+                                      placeholder={t(
+                                        "listener_name_placeholder",
+                                        "Optional display name"
+                                      )}
+                                      value={field.value ?? ""}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            {renderGroupCard(
+                              t("basic", "Basic Configuration"),
+                              fields,
+                              "basic",
+                              control,
+                              form,
+                              i,
+                              current
+                            )}
+                            {renderGroupCard(
+                              t("obfs", "Obfuscation"),
+                              fields,
+                              "obfs",
+                              control,
+                              form,
+                              i,
+                              current
+                            )}
+                            {renderGroupCard(
+                              t("transport", "Transport"),
+                              fields,
+                              "transport",
+                              control,
+                              form,
+                              i,
+                              current
+                            )}
+                            {renderGroupCard(
+                              t("security", "Security"),
+                              fields,
+                              "security",
+                              control,
+                              form,
+                              i,
+                              current
+                            )}
+                            {renderGroupCard(
+                              t("reality", "Reality"),
+                              fields,
+                              "reality",
+                              control,
+                              form,
+                              i,
+                              current
+                            )}
+                            {renderGroupCard(
+                              t("encryption", "Encryption"),
+                              fields,
+                              "encryption",
+                              control,
+                              form,
+                              i,
+                              current
+                            )}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  }
+                )}
               </Accordion>
             </form>
           </Form>
