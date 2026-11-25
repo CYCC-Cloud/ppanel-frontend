@@ -29,7 +29,7 @@ export default function Nodes() {
   const [loading, setLoading] = useState(false);
 
   // Use our zustand store for server data
-  const { getServerName, getServerAddress, getProtocolPort } = useServer();
+  const { getServerName, getServerAddress, getListenerByKey } = useServer();
   const { fetchNodes, fetchTags } = useNode();
 
   return (
@@ -44,10 +44,19 @@ export default function Nodes() {
             onSubmit={async (values) => {
               setLoading(true);
               try {
+                // Named rather than spread from the row: a stale row protocol
+                // or port would otherwise override the resolved listener.
                 const body: API.UpdateNodeRequest = {
-                  ...row,
-                  ...values,
-                } as any;
+                  id: row.id,
+                  name: values.name,
+                  server_id: Number(values.server_id),
+                  listener_key: values.listener_key,
+                  protocol: values.protocol,
+                  address: values.address,
+                  port: Number(values.port),
+                  tags: values.tags || [],
+                  enabled: row.enabled,
+                };
                 await updateNode(body);
                 toast.success(t("updated", "Updated"));
                 ref.current?.refresh();
@@ -171,9 +180,19 @@ export default function Nodes() {
         },
         {
           id: "protocol",
-          header: ` ${t("protocol", "Protocol")}:${t("port", "Port")}`,
-          cell: ({ row }) =>
-            `${row.original.protocol}:${getProtocolPort(row.original.server_id, row.original.protocol)}`,
+          header: ` ${t("listener", "Listener")}:${t("port", "Port")}`,
+          cell: ({ row }) => {
+            const listener = getListenerByKey(
+              row.original.server_id,
+              row.original.listener_key
+            );
+            if (!listener) {
+              // The listener was disabled or removed; report what the node
+              // still stores rather than a sibling listener's values.
+              return `${row.original.protocol || "—"}:${row.original.port || "—"}`;
+            }
+            return `${listener.listener_name} (${listener.protocol}):${listener.port}`;
+          },
         },
         {
           accessorKey: "tags",
@@ -201,10 +220,11 @@ export default function Nodes() {
               try {
                 const body: API.CreateNodeRequest = {
                   name: values.name,
-                  server_id: Number(values.server_id!),
+                  server_id: Number(values.server_id),
+                  listener_key: values.listener_key,
                   protocol: values.protocol,
                   address: values.address,
-                  port: Number(values.port!),
+                  port: Number(values.port),
                   tags: values.tags || [],
                   enabled: false,
                 };

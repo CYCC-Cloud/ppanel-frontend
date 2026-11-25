@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { protocols } from "./constants";
 import { getProtocolDefaultConfig } from "./defaults";
 import { formSchema } from "./schemas";
-import { getProtocolFormValues, preserveUneditableProtocols } from "./values";
+import { getListenerFormValues, preserveUneditableProtocols } from "./values";
 
 const nowhere = {
   type: "nowhere",
@@ -47,7 +47,7 @@ describe("NW3 server form", () => {
       "obfs_password",
     ])
       expect(defaults).not.toHaveProperty(key);
-    expect(() => parse(getProtocolFormValues())).not.toThrow();
+    expect(() => parse(getListenerFormValues())).not.toThrow();
   });
 
   it.each([
@@ -55,7 +55,7 @@ describe("NW3 server form", () => {
     "none",
   ])("retains Nowhere and its %s setting across editing and submission", (obfs) => {
     const initial = [{ ...nowhere, obfs }];
-    const values = getProtocolFormValues(initial);
+    const values = getListenerFormValues(initial);
     const edited = parse(values).protocols.filter(
       (protocol) => protocol.enable
     );
@@ -69,7 +69,7 @@ describe("NW3 server form", () => {
   it.each([
     0, 1,
   ])("upgrades stored version %s to NW3 while preserving disabled Morph", (version) => {
-    const values = getProtocolFormValues([
+    const values = getListenerFormValues([
       { ...nowhere, version, alpn: ["now/1"], network: "both", obfs: " NONE " },
     ]);
     expect(
@@ -106,7 +106,7 @@ describe("NW3 server form", () => {
       settings: { custom: "keep" },
     };
     const initial = [nowhere, opaque];
-    const edited = parse(getProtocolFormValues(initial)).protocols.filter(
+    const edited = parse(getListenerFormValues(initial)).protocols.filter(
       (p) => p.enable
     );
     const payload = preserveUneditableProtocols(edited, initial);
@@ -127,7 +127,7 @@ describe("NW3 server form", () => {
         path: "/existing",
       },
     ];
-    const values = getProtocolFormValues(initial);
+    const values = getListenerFormValues(initial);
     expect(values.find((p) => p.type === "vless")).toMatchObject({
       security: "reality",
       transport: "xhttp",
@@ -135,5 +135,25 @@ describe("NW3 server form", () => {
       cert_mode: "none",
     });
     expect(preserveUneditableProtocols([], initial)).toEqual([]);
+  });
+
+  it("keeps every stored listener of one type instead of collapsing them", () => {
+    const initial = [
+      { type: "trojan", enable: true, port: 443, listener_key: "a" },
+      { type: "trojan", enable: false, port: 8443, listener_key: "b" },
+    ];
+    const values = getListenerFormValues(initial);
+
+    expect(values.map((value) => value.listener_key)).toEqual(["a", "b"]);
+    expect(new Set(values.map((value) => value.draft_id)).size).toBe(2);
+  });
+
+  it("falls back to the protocol default when a stored transport is undefined", () => {
+    const values = getListenerFormValues([
+      { type: "trojan", enable: true, port: 443, transport: undefined },
+    ]);
+
+    expect(values[0]?.transport).toBe("tcp");
+    expect(() => parse(values)).not.toThrow();
   });
 });

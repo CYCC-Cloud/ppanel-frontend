@@ -51,3 +51,16 @@ export type FieldConfig = {
 };
 
 export type ProtocolType = (typeof protocols)[number];
+
+// A listener row being edited in the server form. Per-protocol fields stay
+// untyped here because the form is schema-validated on submit.
+export type ListenerDraft = Record<string, unknown> & {
+  type?: string;
+  draft_id?: string;
+  listener_key?: string;
+  listener_name?: string | null;
+  enable?: boolean;
+  port?: number | null;
+  transport?: string;
+  security?: string;
+};

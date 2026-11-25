@@ -31,9 +31,6 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { useNode } from "@/stores/node";
 import { useServer } from "@/stores/server";
-import type { ProtocolType } from "../servers/form-schema/types";
-
-export type ProtocolName = ProtocolType | "hysteria" | "http" | "socks";
 
 const buildSchema = (t: TFunction) =>
   z.object({
@@ -46,6 +43,9 @@ const buildSchema = (t: TFunction) =>
       .int()
       .gt(0, t("errors.serverRequired", "Please select a server"))
       .optional(),
+    listener_key: z
+      .string()
+      .min(1, t("errors.listenerRequired", "Please select a listener")),
     protocol: z
       .string()
       .min(1, t("errors.protocolRequired", "Please select a protocol")),
@@ -64,6 +64,16 @@ const buildSchema = (t: TFunction) =>
   });
 
 export type NodeFormValues = z.infer<ReturnType<typeof buildSchema>>;
+
+const emptyValues: NodeFormValues = {
+  name: "",
+  server_id: undefined,
+  listener_key: "",
+  protocol: "",
+  address: "",
+  port: 0,
+  tags: [],
+};
 
 function normalizeValues(v?: Partial<NodeFormValues>): Partial<NodeFormValues> {
   if (!v) return {};
@@ -86,10 +96,6 @@ export default function NodeForm(props: {
     new Set()
   );
 
-  const addAutoFilledField = (fieldName: string) => {
-    setAutoFilledFields((prev) => new Set(prev).add(fieldName));
-  };
-
   const removeAutoFilledField = (fieldName: string) => {
     setAutoFilledFields((prev) => {
       const newSet = new Set(prev);
@@ -101,45 +107,55 @@ export default function NodeForm(props: {
   const form = useForm<NodeFormValues, any, NodeFormValues>({
     resolver: zodResolver(Scheme),
     defaultValues: {
-      name: "",
-      server_id: undefined,
-      protocol: "",
-      address: "",
-      port: 0,
-      tags: [],
+      ...emptyValues,
       ...normalizeValues(initialValues),
     },
   });
 
   const serverId = form.watch("server_id");
 
-  const { servers, getAvailableProtocols } = useServer();
+  const { servers, getAvailableListeners, getListenerByKey } = useServer();
   const { tags } = useNode();
 
   const existingTags: string[] = tags || [];
 
-  const availableProtocols = getAvailableProtocols(serverId);
+  const availableListeners = getAvailableListeners(serverId);
 
   useEffect(() => {
     if (initialValues) {
       form.reset({
-        name: "",
-        server_id: undefined,
-        protocol: "",
-        address: "",
-        port: 0,
-        tags: [],
+        ...emptyValues,
         ...normalizeValues(initialValues),
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialValues]);
 
+  // The server cache loads asynchronously, so a stored binding cannot be
+  // resolved during the reset above. Once the listeners arrive, refresh the
+  // protocol and port from the bound listener. A key that resolves to nothing
+  // is left alone: the listener may have been disabled or removed, and
+  // silently rebinding the node would move its traffic to another listener.
+  const boundListenerKey = form.watch("listener_key");
+  useEffect(() => {
+    const listener = getListenerByKey(serverId, boundListenerKey);
+    if (!listener) return;
+    form.setValue("protocol", listener.protocol, { shouldDirty: false });
+    if (listener.port) {
+      form.setValue("port", listener.port, { shouldDirty: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverId, boundListenerKey, availableListeners.length]);
+
   function handleServerChange(nextId?: number | null) {
     const id = nextId ?? undefined;
+    const previousServerId = form.getValues("server_id");
     form.setValue("server_id", id);
 
+    if (id === previousServerId) return;
+
     if (!id) {
+      applyListenerSelection("");
       setAutoFilledFields(new Set());
       return;
     }
@@ -164,25 +180,13 @@ export default function NodeForm(props: {
       fieldsToFill.push("address");
     }
 
-    const protocols = getAvailableProtocols(id);
-    const firstProtocol = protocols[0];
+    const [firstListener] = getAvailableListeners(id);
 
-    if (
-      firstProtocol &&
-      (!currentValues.protocol || autoFilledFields.has("protocol"))
-    ) {
-      form.setValue("protocol", firstProtocol.protocol, { shouldDirty: false });
-      fieldsToFill.push("protocol");
-
-      if (
-        !currentValues.port ||
-        currentValues.port === 0 ||
-        autoFilledFields.has("port")
-      ) {
-        const port = firstProtocol.port || 0;
-        form.setValue("port", port, { shouldDirty: false });
-        fieldsToFill.push("port");
-      }
+    if (firstListener) {
+      applyListenerSelection(firstListener.listener_key, id);
+      fieldsToFill.push("listener_key", "protocol", "port");
+    } else {
+      applyListenerSelection("", id);
     }
 
     setAutoFilledFields(new Set(fieldsToFill));
@@ -196,31 +200,25 @@ export default function NodeForm(props: {
     removeAutoFilledField(fieldName);
   };
 
-  function handleProtocolChange(nextProto?: ProtocolName | null) {
-    const protocol = (nextProto || "") as ProtocolName | "";
-    form.setValue("protocol", protocol);
+  // A listener is the only unambiguous selector: a server may run several
+  // listeners of one protocol type, so the protocol and port are always taken
+  // from the chosen listener rather than typed independently.
+  function applyListenerSelection(
+    nextListenerKey?: string | null,
+    nextServerId?: number
+  ) {
+    const listenerKey = nextListenerKey || "";
+    form.setValue("listener_key", listenerKey);
 
-    if (!(protocol && serverId)) {
-      removeAutoFilledField("protocol");
+    const listener = getListenerByKey(nextServerId ?? serverId, listenerKey);
+    if (!listener) {
+      form.setValue("protocol", "");
+      form.setValue("port", 0);
       return;
     }
 
-    const currentValues = form.getValues();
-    const isPortAutoFilled = autoFilledFields.has("port");
-
-    removeAutoFilledField("protocol");
-
-    if (!currentValues.port || currentValues.port === 0 || isPortAutoFilled) {
-      const protocolData = availableProtocols.find(
-        (p) => p.protocol === protocol
-      );
-
-      if (protocolData) {
-        const port = protocolData.port || 0;
-        form.setValue("port", port, { shouldDirty: false });
-        addAutoFilledField("port");
-      }
-    }
+    form.setValue("protocol", listener.protocol, { shouldDirty: false });
+    form.setValue("port", listener.port || 0, { shouldDirty: false });
   }
 
   async function handleSubmit(values: NodeFormValues) {
@@ -237,12 +235,7 @@ export default function NodeForm(props: {
         <Button
           onClick={() => {
             form.reset({
-              name: "",
-              server_id: undefined,
-              protocol: "",
-              address: "",
-              port: 0,
-              tags: [],
+              ...emptyValues,
               ...normalizeValues(initialValues),
             });
             setAutoFilledFields(new Set());
@@ -282,20 +275,40 @@ export default function NodeForm(props: {
               />
               <FormField
                 control={form.control}
+                name="listener_key"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("listener", "Listener")}</FormLabel>
+                    <FormControl>
+                      <Combobox<string, false>
+                        onChange={(v) => applyListenerSelection(v)}
+                        options={availableListeners.map((listener) => ({
+                          value: listener.listener_key,
+                          label: `${listener.listener_name} (${listener.protocol}${
+                            listener.port ? `:${listener.port}` : ""
+                          })`,
+                        }))}
+                        placeholder={t("select_listener", "Select listener…")}
+                        value={field.value}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
                 name="protocol"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t("protocol", "Protocol")}</FormLabel>
                     <FormControl>
-                      <Combobox<string, false>
-                        onChange={(v) =>
-                          handleProtocolChange((v as ProtocolName) || null)
-                        }
-                        options={availableProtocols.map((p) => ({
-                          value: p.protocol,
-                          label: `${p.protocol}${p.port ? ` (${p.port})` : ""}`,
-                        }))}
-                        placeholder={t("select_protocol", "Select protocol…")}
+                      {/* The protocol always comes from the bound listener, so
+                          it is shown rather than chosen. */}
+                      <EnhancedInput
+                        {...field}
+                        disabled
+                        placeholder={t("unavailable", "—")}
                         value={field.value}
                       />
                     </FormControl>

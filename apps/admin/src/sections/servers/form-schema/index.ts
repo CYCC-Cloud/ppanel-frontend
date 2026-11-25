@@ -30,12 +30,14 @@ export { getProtocolDefaultConfig } from "./defaults";
 // Re-export all schemas
 export { formSchema, protocolApiScheme } from "./schemas";
 // Re-export all types
-export type { FieldConfig, ProtocolType } from "./types";
+export type { FieldConfig, ListenerDraft, ProtocolType } from "./types";
 // Re-export hooks
 export { useProtocolFields } from "./useProtocolFields";
 
 export {
-  getProtocolFormValues,
+  buildListenerDraft,
+  catalogueType,
+  getListenerFormValues,
   getUneditableProtocols,
   preserveUneditableProtocols,
 } from "./values";

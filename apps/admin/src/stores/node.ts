@@ -22,7 +22,7 @@ interface NodeState {
 
   // Getters
   getNodeById: (nodeId: number) => API.Node | undefined;
-  isProtocolUsedInNodes: (serverId: number, protocolType: string) => boolean;
+  isListenerUsedInNodes: (serverId: number, listenerKey?: string) => boolean;
   isServerReferencedByNodes: (serverId: number) => boolean;
   getNodesByTag: (tag: string) => API.Node[];
   getNodesWithoutTags: () => API.Node[];
@@ -79,10 +79,14 @@ export const useNodeStore = create<NodeState>((set, get) => ({
   // Getters
   getNodeById: (nodeId: number) => get().nodes.find((n) => n.id === nodeId),
 
-  isProtocolUsedInNodes: (serverId: number, protocolType: string) =>
-    get().nodes.some(
-      (node) => node.server_id === serverId && node.protocol === protocolType
-    ),
+  // Nodes bind to a listener, not a protocol type, so a sibling listener of
+  // the same type must not look occupied.
+  isListenerUsedInNodes: (serverId: number, listenerKey?: string) => {
+    if (!listenerKey) return false;
+    return get().nodes.some(
+      (node) => node.server_id === serverId && node.listener_key === listenerKey
+    );
+  },
 
   isServerReferencedByNodes: (serverId: number) =>
     get().nodes.some((node) => node.server_id === serverId),
@@ -132,7 +136,7 @@ export const useNode = () => {
     fetchNodes: store.fetchNodes,
     fetchTags: store.fetchTags,
     getNodeById: store.getNodeById,
-    isProtocolUsedInNodes: store.isProtocolUsedInNodes,
+    isListenerUsedInNodes: store.isListenerUsedInNodes,
     isServerReferencedByNodes: store.isServerReferencedByNodes,
     getNodesByTag: store.getNodesByTag,
     getNodesWithoutTags: store.getNodesWithoutTags,

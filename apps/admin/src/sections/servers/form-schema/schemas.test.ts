@@ -145,3 +145,83 @@ describe("client fingerprint protocol fields", () => {
     });
   });
 });
+
+describe("listener identity", () => {
+  const listener = (overrides: Record<string, unknown>) => ({
+    type: "trojan",
+    enable: true,
+    security: "tls",
+    cert_mode: "self",
+    sni: "node.example.com",
+    listener_key: "",
+    listener_name: null,
+    port: 443,
+    ratio: 1,
+    ...overrides,
+  });
+
+  it("parses same-type listeners with independent keys", () => {
+    const result = formSchema.parse({
+      name: "gateway",
+      address: "node.example.com",
+      protocols: [
+        listener({ listener_key: "a", listener_name: "Primary" }),
+        listener({
+          listener_key: "b",
+          listener_name: "Fallback",
+          port: 8443,
+          ratio: 3,
+        }),
+      ],
+    });
+
+    expect(result.protocols.map((protocol) => protocol.listener_key)).toEqual([
+      "a",
+      "b",
+    ]);
+  });
+
+  it("keeps a new listener key empty for backend minting", () => {
+    const result = formSchema.parse({
+      name: "gateway",
+      address: "node.example.com",
+      protocols: [listener({})],
+    });
+
+    expect(result.protocols[0]?.listener_key).toBe("");
+  });
+
+  it("accepts a disabled listener sharing an enabled listener's port", () => {
+    const result = formSchema.safeParse({
+      name: "gateway",
+      address: "node.example.com",
+      protocols: [
+        listener({ listener_key: "a" }),
+        listener({ listener_key: "b", enable: false }),
+      ],
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects duplicate enabled ports on both offending paths", () => {
+    const result = formSchema.safeParse({
+      name: "gateway",
+      address: "node.example.com",
+      protocols: [
+        listener({ listener_key: "a" }),
+        listener({ listener_key: "b" }),
+      ],
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ path: ["protocols", 0, "port"] }),
+          expect.objectContaining({ path: ["protocols", 1, "port"] }),
+        ])
+      );
+    }
+  });
+});
