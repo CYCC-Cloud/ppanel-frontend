@@ -11124,6 +11124,12 @@
                 "parameters": [
                     {
                         "type": "string",
+                        "description": "ListenerKey selects one listener of the server. Requests that omit it\nfall back to Protocol, which only resolves while the server runs a\nsingle listener of that type.",
+                        "name": "listener_key",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
                         "name": "protocol",
                         "in": "query"
                     },
@@ -11167,6 +11173,12 @@
                 ],
                 "summary": "Get server config",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ListenerKey selects one listener of the server. Requests that omit it\nfall back to Protocol, which only resolves while the server runs a\nsingle listener of that type.",
+                        "name": "listener_key",
+                        "in": "query"
+                    },
                     {
                         "type": "string",
                         "name": "protocol",
@@ -11384,6 +11396,12 @@
                 ],
                 "summary": "Get user list",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ListenerKey selects one listener of the server. Requests that omit it\nfall back to Protocol, which only resolves while the server runs a\nsingle listener of that type.",
+                        "name": "listener_key",
+                        "in": "query"
+                    },
                     {
                         "type": "string",
                         "name": "protocol",
@@ -12356,6 +12374,10 @@
                 "ip": {
                     "type": "string"
                 },
+                "listener_key": {
+                    "description": "ListenerKey selects one listener of the server. Requests that omit it\nfall back to Protocol, which only resolves while the server runs a\nsingle listener of that type.",
+                    "type": "string"
+                },
                 "protocol": {
                     "type": "string"
                 },
@@ -12677,6 +12699,10 @@
                 },
                 "enabled": {
                     "type": "boolean"
+                },
+                "listener_key": {
+                    "description": "ListenerKey binds the node to one listener of its server. Requests that\nomit it fall back to Protocol, which only resolves while the server runs\na single listener of that type. Protocol is always taken from the\nresolved listener, and Port defaults to the listener's inbound port.",
+                    "type": "string"
                 },
                 "name": {
                     "type": "string"
@@ -14716,6 +14742,9 @@
                 "id": {
                     "type": "integer"
                 },
+                "listener_key": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -14999,6 +15028,10 @@
         "dto.OnlineUsersRequest": {
             "type": "object",
             "properties": {
+                "listener_key": {
+                    "description": "ListenerKey selects one listener of the server. Requests that omit it\nfall back to Protocol, which only resolves while the server runs a\nsingle listener of that type.",
+                    "type": "string"
+                },
                 "protocol": {
                     "type": "string"
                 },
@@ -15690,6 +15723,14 @@
                 },
                 "host": {
                     "description": "VLESS/VMess/Trojan transport: the Host of WebSocket, HTTPUpgrade or XHTTP.",
+                    "type": "string"
+                },
+                "listener_key": {
+                    "description": "ListenerKey identifies this listener inside its server. It stays stable\nacross updates and is what every listener-scoped flow resolves by, so a\nserver can run several listeners of the same protocol type.",
+                    "type": "string"
+                },
+                "listener_name": {
+                    "description": "ListenerName is an optional administrator-facing label.",
                     "type": "string"
                 },
                 "mode": {
@@ -16782,7 +16823,16 @@
                 "ip": {
                     "type": "string"
                 },
+                "listener_key": {
+                    "description": "ListenerKey identifies which listener reported this address, so two\nlisteners of the same type are never conflated.",
+                    "type": "string"
+                },
+                "listener_name": {
+                    "description": "ListenerName is the listener's optional administrator-facing label.",
+                    "type": "string"
+                },
                 "protocol": {
+                    "description": "Protocol is the resolved listener's type. It stays for compatibility and\ncannot identify a listener on its own once a server runs several\nlisteners of one type.",
                     "type": "string"
                 }
             }
@@ -16822,6 +16872,10 @@
                 "disk": {
                     "type": "number"
                 },
+                "listener_key": {
+                    "description": "ListenerKey selects one listener of the server. Requests that omit it\nfall back to Protocol, which only resolves while the server runs a\nsingle listener of that type.",
+                    "type": "string"
+                },
                 "mem": {
                     "type": "number"
                 },
@@ -16842,6 +16896,10 @@
         "dto.ServerPushUserTrafficRequest": {
             "type": "object",
             "properties": {
+                "listener_key": {
+                    "description": "ListenerKey selects one listener of the server. Requests that omit it\nfall back to Protocol, which only resolves while the server runs a\nsingle listener of that type.",
+                    "type": "string"
+                },
                 "protocol": {
                     "type": "string"
                 },
@@ -18011,6 +18069,10 @@
                 },
                 "id": {
                     "type": "integer"
+                },
+                "listener_key": {
+                    "description": "ListenerKey rebinds the node to one listener of its server. Requests\nthat omit it fall back to Protocol, which only resolves while the server\nruns a single listener of that type. Protocol is always taken from the\nresolved listener, and Port defaults to the listener's inbound port.",
+                    "type": "string"
                 },
                 "name": {
                     "type": "string"

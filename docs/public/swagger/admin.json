@@ -8033,6 +8033,10 @@
                 "enabled": {
                     "type": "boolean"
                 },
+                "listener_key": {
+                    "description": "ListenerKey binds the node to one listener of its server. Requests that\nomit it fall back to Protocol, which only resolves while the server runs\na single listener of that type. Protocol is always taken from the\nresolved listener, and Port defaults to the listener's inbound port.",
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -9559,6 +9563,9 @@
                 "id": {
                     "type": "integer"
                 },
+                "listener_key": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -10234,6 +10241,14 @@
                     "description": "VLESS/VMess/Trojan transport: the Host of WebSocket, HTTPUpgrade or XHTTP.",
                     "type": "string"
                 },
+                "listener_key": {
+                    "description": "ListenerKey identifies this listener inside its server. It stays stable\nacross updates and is what every listener-scoped flow resolves by, so a\nserver can run several listeners of the same protocol type.",
+                    "type": "string"
+                },
+                "listener_name": {
+                    "description": "ListenerName is an optional administrator-facing label.",
+                    "type": "string"
+                },
                 "mode": {
                     "description": "Snell only: the Snell v6 mode; other protocols leave it unset.",
                     "type": "string"
@@ -10865,7 +10880,16 @@
                 "ip": {
                     "type": "string"
                 },
+                "listener_key": {
+                    "description": "ListenerKey identifies which listener reported this address, so two\nlisteners of the same type are never conflated.",
+                    "type": "string"
+                },
+                "listener_name": {
+                    "description": "ListenerName is the listener's optional administrator-facing label.",
+                    "type": "string"
+                },
                 "protocol": {
+                    "description": "Protocol is the resolved listener's type. It stays for compatibility and\ncannot identify a listener on its own once a server runs several\nlisteners of one type.",
                     "type": "string"
                 }
             }
@@ -11812,6 +11836,10 @@
                 },
                 "id": {
                     "type": "integer"
+                },
+                "listener_key": {
+                    "description": "ListenerKey rebinds the node to one listener of its server. Requests\nthat omit it fall back to Protocol, which only resolves while the server\nruns a single listener of that type. Protocol is always taken from the\nresolved listener, and Port defaults to the listener's inbound port.",
+                    "type": "string"
                 },
                 "name": {
                     "type": "string"
