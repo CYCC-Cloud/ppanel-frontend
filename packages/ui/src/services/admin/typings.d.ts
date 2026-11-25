@@ -200,6 +200,11 @@ the additional addresses included. */
   type CreateNodeRequest = {
     address?: string;
     enabled?: boolean;
+    /** ListenerKey binds the node to one listener of its server. Requests that
+omit it fall back to Protocol, which only resolves while the server runs
+a single listener of that type. Protocol is always taken from the
+resolved listener, and Port defaults to the listener's inbound port. */
+    listener_key?: string;
     name?: string;
     port?: number;
     protocol?: string;
@@ -1110,6 +1115,7 @@ subscription URL does not carry them, in query-string form such as
     created_at: number;
     enabled: boolean;
     id: number;
+    listener_key: string;
     name: string;
     port: number;
     protocol: string;
@@ -1365,6 +1371,12 @@ it was recorded. */
     hop_ports: string;
     /** VLESS/VMess/Trojan transport: the Host of WebSocket, HTTPUpgrade or XHTTP. */
     host: string;
+    /** ListenerKey identifies this listener inside its server. It stays stable
+across updates and is what every listener-scoped flow resolves by, so a
+server can run several listeners of the same protocol type. */
+    listener_key: string;
+    /** ListenerName is an optional administrator-facing label. */
+    listener_name: string;
     /** Snell only: the Snell v6 mode; other protocols leave it unset. */
     mode: string;
     /** Protocol-independent capability: the multiplexing level (off, low, medium or high), for the stream protocols that support mux. */
@@ -1617,6 +1629,14 @@ it was recorded. */
 
   type ServerOnlineIP = {
     ip: string;
+    /** ListenerKey identifies which listener reported this address, so two
+listeners of the same type are never conflated. */
+    listener_key: string;
+    /** ListenerName is the listener's optional administrator-facing label. */
+    listener_name: string;
+    /** Protocol is the resolved listener's type. It stays for compatibility and
+cannot identify a listener on its own once a server runs several
+listeners of one type. */
     protocol: string;
   };
 
@@ -1956,6 +1976,11 @@ it was recorded. */
     address?: string;
     enabled?: boolean;
     id?: number;
+    /** ListenerKey rebinds the node to one listener of its server. Requests
+that omit it fall back to Protocol, which only resolves while the server
+runs a single listener of that type. Protocol is always taken from the
+resolved listener, and Port defaults to the listener's inbound port. */
+    listener_key?: string;
     name?: string;
     port?: number;
     protocol?: string;

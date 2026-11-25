@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import type { OpenAPIObject, SchemaObject } from "openapi3-ts";
 
 const responseRequiredOverrides: Record<string, string[]> = {
@@ -53,6 +54,16 @@ function commonFunctionName({
   return `${method}${name}`;
 }
 
+// This fork's backend contract lives in its own `docs/public/swagger`, so the
+// generator must read from disk. `@umijs/openapi` only fetches a `schemaPath`
+// that starts with `http` and otherwise hands the string to CommonJS
+// `require`, which resolves a relative path against the generator's own module
+// rather than this file. It also does not understand a `file://` URL, so an
+// absolute path is the only correct form. cosmiconfig loads this config as
+// CommonJS, which is why the base is `__dirname` and not `import.meta.url`.
+const swaggerPath = (name: string) =>
+  resolve(__dirname, "../../docs/public/swagger", `${name}.json`);
+
 const baseConfig = {
   requestLibPath: "import request from '@workspace/ui/lib/request';",
   serversPath: "./src/services",
@@ -66,8 +77,7 @@ const baseConfig = {
 const config = [
   {
     ...baseConfig,
-    schemaPath:
-      "https://raw.githubusercontent.com/perfect-panel/frontend/refs/heads/main/docs/public/swagger/common.json",
+    schemaPath: swaggerPath("common"),
     projectName: "common",
     hook: {
       ...baseConfig.hook,
@@ -76,14 +86,12 @@ const config = [
   },
   {
     ...baseConfig,
-    schemaPath:
-      "https://raw.githubusercontent.com/perfect-panel/frontend/refs/heads/main/docs/public/swagger/user.json",
+    schemaPath: swaggerPath("user"),
     projectName: "user",
   },
   {
     ...baseConfig,
-    schemaPath:
-      "https://raw.githubusercontent.com/perfect-panel/frontend/refs/heads/main/docs/public/swagger/admin.json",
+    schemaPath: swaggerPath("admin"),
     projectName: "admin",
   },
 ];
