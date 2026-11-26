@@ -46,7 +46,11 @@
     "hourlyRetentionDays": "每小时流量历史保留",
     "hourlyRetentionDaysDescription": "更精细的用户图表所用的按小时流量历史（7-3650 天）。",
     "keepForeverPlaceholder": "0 = 永久保留",
-    "title": "日志清理设置"
+    "title": "日志清理设置",
+    "validation": {
+      "daysRange": "必须为 {{min}}-{{max}} 天",
+      "retentionRange": "使用 0 表示永久保留，或 {{min}}-{{max}} 天"
+    }
   },
   "logSettings": "日志设置",
   "privacyPolicy": {
