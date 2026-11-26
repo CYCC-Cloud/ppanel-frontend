@@ -46,7 +46,11 @@
     "hourlyRetentionDays": "Hourly traffic history retention",
     "hourlyRetentionDaysDescription": "Per-hour traffic history behind the finer user charts (7-3650 days).",
     "keepForeverPlaceholder": "0 = keep forever",
-    "title": "Log Cleanup Settings"
+    "title": "Log Cleanup Settings",
+    "validation": {
+      "daysRange": "Must be {{min}}-{{max}} days",
+      "retentionRange": "Use 0 to keep forever, or {{min}}-{{max}} days"
+    }
   },
   "logSettings": "Log Settings",
   "privacyPolicy": {

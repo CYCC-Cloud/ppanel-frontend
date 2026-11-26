@@ -1,7 +1,20 @@
 // @vitest-environment jsdom
 
+import type { TFunction } from "i18next";
 import { describe, expect, it } from "vitest";
-import { logCleanupSchema } from "./log-cleanup-form";
+import { buildLogCleanupSchema } from "./log-cleanup-form";
+
+// Interpolates like i18next so failures can assert the localized message.
+const t = ((
+  key: string,
+  _fallback: string,
+  options?: Record<string, unknown>
+) =>
+  options
+    ? `${key}:${options.min}-${options.max}`
+    : key) as unknown as TFunction;
+
+const logCleanupSchema = buildLogCleanupSchema(t);
 
 const valid = {
   auto_clear: true,
@@ -48,5 +61,21 @@ describe("log cleanup schema", () => {
         audit_log_retention_days: 29,
       }).success
     ).toBe(false);
+  });
+
+  it("reports range failures through the admin translations", () => {
+    const daysIssue = logCleanupSchema.safeParse({
+      ...valid,
+      clear_days: 6,
+    }).error?.issues[0];
+    expect(daysIssue?.message).toBe("logCleanup.validation.daysRange:7-3650");
+
+    const retentionIssue = logCleanupSchema.safeParse({
+      ...valid,
+      audit_log_retention_days: 29,
+    }).error?.issues[0];
+    expect(retentionIssue?.message).toBe(
+      "logCleanup.validation.retentionRange:30-3650"
+    );
   });
 });

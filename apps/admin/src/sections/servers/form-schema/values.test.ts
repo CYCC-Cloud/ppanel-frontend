@@ -1,8 +1,13 @@
+import type { TFunction } from "i18next";
 import { describe, expect, it } from "vitest";
 import { protocols } from "./constants";
 import { getProtocolDefaultConfig } from "./defaults";
-import { formSchema } from "./schemas";
+import { buildFormSchema } from "./schemas";
 import { getProtocolFormValues, preserveUneditableProtocols } from "./values";
+
+const formSchema = buildFormSchema(
+  ((_key: string, fallback: string) => fallback) as TFunction
+);
 
 const nowhere = {
   type: "nowhere",

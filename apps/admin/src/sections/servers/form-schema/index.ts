@@ -28,7 +28,7 @@ export {
 // Re-export defaults
 export { getProtocolDefaultConfig } from "./defaults";
 // Re-export all schemas
-export { formSchema, protocolApiScheme } from "./schemas";
+export { buildFormSchema, protocolApiScheme } from "./schemas";
 // Re-export all types
 export type { FieldConfig, ProtocolType } from "./types";
 // Re-export hooks

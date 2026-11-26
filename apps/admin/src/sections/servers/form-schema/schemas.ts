@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import { z } from "zod";
 import {
   ALPN_VALUES,
@@ -492,15 +493,22 @@ export const protocolApiScheme = z.discriminatedUnion("type", [
   nowhere,
 ]);
 
-export const formSchema = z.object({
-  name: z.string().min(1),
-  address: z.string().min(1),
-  country: z.string().optional(),
-  city: z.string().optional(),
-  capacity: z.number().int().min(0).default(0),
-  protocols: z.array(
-    protocolApiScheme.superRefine((protocol, ctx) => {
-      refineProtocol(protocol as Record<string, unknown>, ctx);
-    })
-  ),
-});
+export const buildFormSchema = (t: TFunction) =>
+  z.object({
+    name: z.string().min(1),
+    address: z.string().min(1),
+    country: z.string().optional(),
+    city: z.string().optional(),
+    capacity: z
+      .number({
+        message: t("validation.capacityNumber", "Capacity must be a number"),
+      })
+      .int(t("validation.capacityInteger", "Capacity must be a whole number"))
+      .min(0, t("validation.capacityMin", "Capacity cannot be negative"))
+      .default(0),
+    protocols: z.array(
+      protocolApiScheme.superRefine((protocol, ctx) => {
+        refineProtocol(protocol as Record<string, unknown>, ctx);
+      })
+    ),
+  });

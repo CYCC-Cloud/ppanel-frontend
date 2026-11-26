@@ -1,6 +1,11 @@
+import type { TFunction } from "i18next";
 import { describe, expect, it } from "vitest";
 import { getProtocolDefaultConfig } from "./defaults";
-import { formSchema } from "./schemas";
+import { buildFormSchema } from "./schemas";
+
+const formSchema = buildFormSchema(
+  ((_key: string, fallback: string) => fallback) as TFunction
+);
 
 const validServer = {
   name: "Hysteria2 node",
@@ -143,5 +148,24 @@ describe("client fingerprint protocol fields", () => {
       type,
       fingerprint: "firefox",
     });
+  });
+});
+
+describe("server capacity", () => {
+  it("reports the negative capacity through the admin translations", () => {
+    const result = formSchema.safeParse({
+      name: "gateway",
+      address: "node.example.com",
+      capacity: -1,
+      protocols: [],
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(
+        result.error.issues.find((issue) => issue.path[0] === "capacity")
+          ?.message
+      ).toBe("Capacity cannot be negative");
+    }
   });
 });

@@ -45,14 +45,14 @@ import { Switch } from "@workspace/ui/components/switch";
 import { EnhancedInput } from "@workspace/ui/composed/enhanced-input";
 import { Icon } from "@workspace/ui/composed/icon";
 import { cn } from "@workspace/ui/lib/utils";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { type Resolver, useForm, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { useNode } from "@/stores/node";
 import {
+  buildFormSchema,
   type FieldConfig,
-  formSchema,
   getLabel,
   getProtocolDefaultConfig,
   getProtocolFormValues,
@@ -495,10 +495,9 @@ export default function ServerForm(props: {
   const PROTOCOL_FIELDS = useProtocolFields();
   const uneditableProtocols = getUneditableProtocols(initialValues?.protocols);
 
+  const Schema = useMemo(() => buildFormSchema(t), [t]);
   const form = useForm<Record<string, any>>({
-    resolver: zodResolver(formSchema) as unknown as Resolver<
-      Record<string, any>
-    >,
+    resolver: zodResolver(Schema) as unknown as Resolver<Record<string, any>>,
     defaultValues: {
       name: "",
       address: "",

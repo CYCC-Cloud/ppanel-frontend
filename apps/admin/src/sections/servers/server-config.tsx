@@ -44,9 +44,10 @@ import {
   putSystemNodeConfig as updateNodeConfig,
 } from "@workspace/ui/services/admin/admin";
 import { unitConversion } from "@workspace/ui/utils/unit-conversions";
+import type { TFunction } from "i18next";
 import { DicesIcon } from "lucide-react";
 import { uid } from "radash";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -64,18 +65,25 @@ const dnsConfigSchema = z.object({
   domains: z.array(z.string()),
 });
 
-const nodeConfigSchema = z.object({
-  node_secret: z.string().optional(),
-  node_pull_interval: z.number().optional(),
-  node_push_interval: z.number().optional(),
-  traffic_report_threshold: z.number().optional(),
-  default_server_capacity: z.number().int().min(0).optional(),
-  ip_strategy: z.enum(["prefer_ipv4", "prefer_ipv6"]).optional(),
-  dns: z.array(dnsConfigSchema).optional(),
-  block: z.array(z.string()).optional(),
-  outbound: z.array(outboundConfigSchema).optional(),
-});
-type NodeConfigFormData = z.infer<typeof nodeConfigSchema>;
+const buildNodeConfigSchema = (t: TFunction) =>
+  z.object({
+    node_secret: z.string().optional(),
+    node_pull_interval: z.number().optional(),
+    node_push_interval: z.number().optional(),
+    traffic_report_threshold: z.number().optional(),
+    default_server_capacity: z
+      .number({
+        message: t("validation.capacityNumber", "Capacity must be a number"),
+      })
+      .int(t("validation.capacityInteger", "Capacity must be a whole number"))
+      .min(0, t("validation.capacityMin", "Capacity cannot be negative"))
+      .optional(),
+    ip_strategy: z.enum(["prefer_ipv4", "prefer_ipv6"]).optional(),
+    dns: z.array(dnsConfigSchema).optional(),
+    block: z.array(z.string()).optional(),
+    outbound: z.array(outboundConfigSchema).optional(),
+  });
+type NodeConfigFormData = z.infer<ReturnType<typeof buildNodeConfigSchema>>;
 
 export default function ServerConfig() {
   const { t } = useTranslation("servers");
@@ -91,8 +99,9 @@ export default function ServerConfig() {
     enabled: open,
   });
 
+  const Schema = useMemo(() => buildNodeConfigSchema(t), [t]);
   const form = useForm<NodeConfigFormData>({
-    resolver: zodResolver(nodeConfigSchema),
+    resolver: zodResolver(Schema),
     defaultValues: {
       node_secret: "",
       node_pull_interval: undefined,

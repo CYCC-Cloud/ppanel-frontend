@@ -26,29 +26,51 @@ import {
   getLogSetting,
   postLogSetting as updateLogSetting,
 } from "@workspace/ui/services/admin/admin";
-import { useEffect, useState } from "react";
+import type { TFunction } from "i18next";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { z } from "zod";
 
 // Backend: 0 keeps forever, otherwise the value is 30-3650 days.
-const retentionDays = z
-  .number()
-  .int()
-  .refine((value) => value === 0 || (value >= 30 && value <= 3650), {
-    message: "Use 0 to keep forever, or 30-3650 days",
+export const buildLogCleanupSchema = (t: TFunction) => {
+  const daysRange = t(
+    "logCleanup.validation.daysRange",
+    "Must be {{min}}-{{max}} days",
+    { min: 7, max: 3650 }
+  );
+  const retentionRange = t(
+    "logCleanup.validation.retentionRange",
+    "Use 0 to keep forever, or {{min}}-{{max}} days",
+    { min: 30, max: 3650 }
+  );
+
+  const retentionDays = z
+    .number({ message: retentionRange })
+    .int(retentionRange)
+    .refine((value) => value === 0 || (value >= 30 && value <= 3650), {
+      message: retentionRange,
+    });
+
+  return z.object({
+    auto_clear: z.boolean(),
+    clear_days: z
+      .number()
+      .int(daysRange)
+      .min(7, daysRange)
+      .max(3650, daysRange),
+    traffic_hourly_retention_days: z
+      .number()
+      .int(daysRange)
+      .min(7, daysRange)
+      .max(3650, daysRange),
+    traffic_daily_retention_days: retentionDays,
+    audit_log_retention_days: retentionDays,
   });
+};
 
-export const logCleanupSchema = z.object({
-  auto_clear: z.boolean(),
-  clear_days: z.number().int().min(7).max(3650),
-  traffic_hourly_retention_days: z.number().int().min(7).max(3650),
-  traffic_daily_retention_days: retentionDays,
-  audit_log_retention_days: retentionDays,
-});
-
-type LogCleanupFormData = z.infer<typeof logCleanupSchema>;
+type LogCleanupFormData = z.infer<ReturnType<typeof buildLogCleanupSchema>>;
 
 export default function LogCleanupForm() {
   const { t } = useTranslation("system");
@@ -64,8 +86,9 @@ export default function LogCleanupForm() {
     enabled: open,
   });
 
+  const Schema = useMemo(() => buildLogCleanupSchema(t), [t]);
   const form = useForm<LogCleanupFormData>({
-    resolver: zodResolver(logCleanupSchema),
+    resolver: zodResolver(Schema),
     defaultValues: {
       auto_clear: false,
       clear_days: 30,
