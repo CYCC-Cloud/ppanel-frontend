@@ -18,6 +18,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -506,6 +507,7 @@ export default function ServerForm(props: {
       address: "",
       country: "",
       city: "",
+      capacity: 0,
       protocols: [] as any[],
       ...initialValues,
     },
@@ -521,6 +523,7 @@ export default function ServerForm(props: {
         address: "",
         country: "",
         city: "",
+        capacity: 0,
         ...initialValues,
         protocols: getListenerFormValues(initialValues.protocols),
       });
@@ -667,6 +670,7 @@ export default function ServerForm(props: {
       country: values.country,
       city: values.city,
       address: values.address,
+      capacity: values.capacity,
       protocols: preserveUneditableProtocols(
         submittedProtocols,
         initialValues?.protocols
@@ -687,6 +691,7 @@ export default function ServerForm(props: {
         address: "",
         country: "",
         city: "",
+        capacity: 0,
         // A new server starts with no listeners; the administrator adds the
         // ones it should expose.
         protocols: [],
@@ -778,6 +783,30 @@ export default function ServerForm(props: {
                           onValueChange={(v) => field.onChange(v)}
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={control}
+                  name="capacity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t("capacity", "Capacity")}</FormLabel>
+                      <FormControl>
+                        <EnhancedInput
+                          min={0}
+                          onValueChange={field.onChange}
+                          type="number"
+                          value={field.value as number | undefined}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        {t(
+                          "capacityDescription",
+                          "Display-only capacity in users, used to grade this server's load for users. 0 uses the global default; it never limits connections."
+                        )}
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

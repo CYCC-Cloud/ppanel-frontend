@@ -69,6 +69,7 @@ const nodeConfigSchema = z.object({
   node_pull_interval: z.number().optional(),
   node_push_interval: z.number().optional(),
   traffic_report_threshold: z.number().optional(),
+  default_server_capacity: z.number().int().min(0).optional(),
   ip_strategy: z.enum(["prefer_ipv4", "prefer_ipv6"]).optional(),
   dns: z.array(dnsConfigSchema).optional(),
   block: z.array(z.string()).optional(),
@@ -97,6 +98,7 @@ export default function ServerConfig() {
       node_pull_interval: undefined,
       node_push_interval: undefined,
       traffic_report_threshold: undefined,
+      default_server_capacity: 0,
       ip_strategy: "prefer_ipv4",
       dns: [],
       block: [],
@@ -113,6 +115,7 @@ export default function ServerConfig() {
         traffic_report_threshold: cfgResp.traffic_report_threshold as
           | number
           | undefined,
+        default_server_capacity: cfgResp.default_server_capacity ?? 0,
         ip_strategy:
           (cfgResp.ip_strategy as "prefer_ipv4" | "prefer_ipv6" | undefined) ||
           "prefer_ipv4",
@@ -128,6 +131,7 @@ export default function ServerConfig() {
     try {
       await updateNodeConfig({
         ...values,
+        default_server_capacity: values.default_server_capacity ?? 0,
         outbound: (values.outbound || []).map((item) =>
           normalizeOutboundConfig(item)
         ),
@@ -347,6 +351,36 @@ export default function ServerConfig() {
                           {t(
                             "server_config.fields.traffic_report_threshold_desc",
                             "Set the minimum threshold for traffic reporting."
+                          )}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="default_server_capacity"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {t(
+                            "server_config.fields.default_server_capacity",
+                            "Default server capacity"
+                          )}
+                        </FormLabel>
+                        <FormControl>
+                          <EnhancedInput
+                            min={0}
+                            onValueChange={field.onChange}
+                            type="number"
+                            value={field.value as number | undefined}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          {t(
+                            "server_config.fields.default_server_capacity_desc",
+                            "Display-only capacity in users used for servers that leave their own capacity at 0; it never limits connections."
                           )}
                         </FormDescription>
                         <FormMessage />

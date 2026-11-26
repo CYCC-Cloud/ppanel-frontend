@@ -152,6 +152,7 @@ describe("server editor protocol preservation", () => {
             id: 7,
             name: "Node",
             address: "node.example",
+            capacity: 25,
             protocols: [
               {
                 type: "nowhere",
@@ -193,6 +194,7 @@ describe("server editor protocol preservation", () => {
       }),
       opaque,
     ]);
+    expect(payload.capacity).toBe(25);
   });
 
   it("creates an NW3 server with valid defaults after the required fields are filled", async () => {
@@ -225,6 +227,7 @@ describe("server editor protocol preservation", () => {
     ).toContain("TLS + QUIC");
     fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
     await waitFor(() => expect(submit).toHaveBeenCalledOnce());
+    expect(submit.mock.calls[0]?.[0].capacity).toBe(0);
     expect(submit.mock.calls[0]?.[0].protocols).toEqual([
       expect.objectContaining({
         type: "nowhere",

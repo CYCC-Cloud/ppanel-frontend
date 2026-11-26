@@ -210,6 +210,7 @@ export default function Servers() {
       country: others.country as string,
       city: others.city as string,
       address: others.address as string,
+      capacity: others.capacity as number,
       protocols: (others.protocols as API.Protocol[]) || [],
     };
     try {

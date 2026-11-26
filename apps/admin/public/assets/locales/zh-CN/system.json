@@ -33,12 +33,19 @@
     "title": "邀请设置"
   },
   "logCleanup": {
+    "auditRetentionDays": "审计日志保留",
+    "auditRetentionDaysDescription": "登录、注册、订阅获取、流量重置以及邮件/短信日志；0 表示永久保留，否则为 30-3650 天。",
     "autoClear": "启用自动清理",
-    "autoClearDescription": "启用后，系统将自动清理过期的日志记录",
-    "clearDays": "保留天数",
-    "clearDaysDescription": "日志保留的天数；超过此时间的日志将被清理",
+    "autoClearDescription": "总开关：关闭后不会执行任何自动清理，无论下方保留期限如何设置",
+    "clearDays": "原始流量与统计保留",
+    "clearDaysDescription": "原始流量明细以及每日统计和排行在此天数后清理（7-3650）。",
     "clearDaysPlaceholder": "输入保留天数",
+    "dailyRetentionDays": "每日流量历史保留",
+    "dailyRetentionDaysDescription": "用户图表中展示的按天流量历史；0 表示永久保留，否则为 30-3650 天。",
     "description": "配置自动日志清理规则和保留期限",
+    "hourlyRetentionDays": "每小时流量历史保留",
+    "hourlyRetentionDaysDescription": "更精细的用户图表所用的按小时流量历史（7-3650 天）。",
+    "keepForeverPlaceholder": "0 = 永久保留",
     "title": "日志清理设置"
   },
   "logSettings": "日志设置",

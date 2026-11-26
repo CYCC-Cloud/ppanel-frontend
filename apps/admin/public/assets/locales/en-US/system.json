@@ -33,12 +33,19 @@
     "title": "Invitation Settings"
   },
   "logCleanup": {
+    "auditRetentionDays": "Audit log retention",
+    "auditRetentionDaysDescription": "Login, registration, subscription fetch, traffic reset and email/SMS logs; 0 keeps them forever, otherwise 30-3650 days.",
     "autoClear": "Enable Auto Cleanup",
-    "autoClearDescription": "When enabled, the system will automatically clear expired log records",
-    "clearDays": "Retention Days",
-    "clearDaysDescription": "Number of days to retain logs; logs older than this will be cleaned up",
+    "autoClearDescription": "Master switch: when off, no automatic cleanup runs, whatever the retention periods below say",
+    "clearDays": "Raw traffic and statistics retention",
+    "clearDaysDescription": "Raw traffic detail plus the daily statistics and rankings are cleared after this many days (7-3650).",
     "clearDaysPlaceholder": "Enter retention days",
+    "dailyRetentionDays": "Daily traffic history retention",
+    "dailyRetentionDaysDescription": "Per-day traffic history shown in user charts; 0 keeps it forever, otherwise 30-3650 days.",
     "description": "Configure automatic log cleanup rules and retention period",
+    "hourlyRetentionDays": "Hourly traffic history retention",
+    "hourlyRetentionDaysDescription": "Per-hour traffic history behind the finer user charts (7-3650 days).",
+    "keepForeverPlaceholder": "0 = keep forever",
     "title": "Log Cleanup Settings"
   },
   "logSettings": "Log Settings",
