@@ -497,6 +497,7 @@ export const formSchema = z.object({
   address: z.string().min(1),
   country: z.string().optional(),
   city: z.string().optional(),
+  capacity: z.number().int().min(0).default(0),
   protocols: z.array(
     protocolApiScheme.superRefine((protocol, ctx) => {
       refineProtocol(protocol as Record<string, unknown>, ctx);

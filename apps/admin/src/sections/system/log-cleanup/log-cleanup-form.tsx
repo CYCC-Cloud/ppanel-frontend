@@ -32,9 +32,20 @@ import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { z } from "zod";
 
-const logCleanupSchema = z.object({
+// Backend: 0 keeps forever, otherwise the value is 30-3650 days.
+const retentionDays = z
+  .number()
+  .int()
+  .refine((value) => value === 0 || (value >= 30 && value <= 3650), {
+    message: "Use 0 to keep forever, or 30-3650 days",
+  });
+
+export const logCleanupSchema = z.object({
   auto_clear: z.boolean(),
-  clear_days: z.number().min(1),
+  clear_days: z.number().int().min(7).max(3650),
+  traffic_hourly_retention_days: z.number().int().min(7).max(3650),
+  traffic_daily_retention_days: retentionDays,
+  audit_log_retention_days: retentionDays,
 });
 
 type LogCleanupFormData = z.infer<typeof logCleanupSchema>;
@@ -58,6 +69,9 @@ export default function LogCleanupForm() {
     defaultValues: {
       auto_clear: false,
       clear_days: 30,
+      traffic_hourly_retention_days: 90,
+      traffic_daily_retention_days: 0,
+      audit_log_retention_days: 365,
     },
   });
 
@@ -135,7 +149,7 @@ export default function LogCleanupForm() {
                     <FormDescription>
                       {t(
                         "logCleanup.autoClearDescription",
-                        "When enabled, the system will automatically clear expired log records"
+                        "Master switch: when off, no automatic cleanup runs, whatever the retention periods below say"
                       )}
                     </FormDescription>
                     <FormMessage />
@@ -149,11 +163,16 @@ export default function LogCleanupForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {t("logCleanup.clearDays", "Retention Days")}
+                      {t(
+                        "logCleanup.clearDays",
+                        "Raw traffic and statistics retention"
+                      )}
                     </FormLabel>
                     <FormControl>
                       <EnhancedInput
                         disabled={!form.watch("auto_clear")}
+                        max={3650}
+                        min={7}
                         onValueChange={(value) => field.onChange(Number(value))}
                         placeholder={t(
                           "logCleanup.clearDaysPlaceholder",
@@ -166,7 +185,111 @@ export default function LogCleanupForm() {
                     <FormDescription>
                       {t(
                         "logCleanup.clearDaysDescription",
-                        "Number of days to retain logs; logs older than this will be cleaned up"
+                        "Raw traffic detail plus the daily statistics and rankings are cleared after this many days (7-3650)."
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="traffic_hourly_retention_days"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {t(
+                        "logCleanup.hourlyRetentionDays",
+                        "Hourly traffic history retention"
+                      )}
+                    </FormLabel>
+                    <FormControl>
+                      <EnhancedInput
+                        disabled={!form.watch("auto_clear")}
+                        max={3650}
+                        min={7}
+                        onValueChange={(value) => field.onChange(Number(value))}
+                        type="number"
+                        value={field.value?.toString()}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        "logCleanup.hourlyRetentionDaysDescription",
+                        "Per-hour traffic history behind the finer user charts (7-3650 days)."
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="traffic_daily_retention_days"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {t(
+                        "logCleanup.dailyRetentionDays",
+                        "Daily traffic history retention"
+                      )}
+                    </FormLabel>
+                    <FormControl>
+                      <EnhancedInput
+                        disabled={!form.watch("auto_clear")}
+                        max={3650}
+                        min={0}
+                        onValueChange={(value) => field.onChange(Number(value))}
+                        placeholder={t(
+                          "logCleanup.keepForeverPlaceholder",
+                          "0 = keep forever"
+                        )}
+                        type="number"
+                        value={field.value?.toString()}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        "logCleanup.dailyRetentionDaysDescription",
+                        "Per-day traffic history shown in user charts; 0 keeps it forever, otherwise 30-3650 days."
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="audit_log_retention_days"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {t(
+                        "logCleanup.auditRetentionDays",
+                        "Audit log retention"
+                      )}
+                    </FormLabel>
+                    <FormControl>
+                      <EnhancedInput
+                        disabled={!form.watch("auto_clear")}
+                        max={3650}
+                        min={0}
+                        onValueChange={(value) => field.onChange(Number(value))}
+                        placeholder={t(
+                          "logCleanup.keepForeverPlaceholder",
+                          "0 = keep forever"
+                        )}
+                        type="number"
+                        value={field.value?.toString()}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        "logCleanup.auditRetentionDaysDescription",
+                        "Login, registration, subscription fetch, traffic reset and email/SMS logs; 0 keeps them forever, otherwise 30-3650 days."
                       )}
                     </FormDescription>
                     <FormMessage />
