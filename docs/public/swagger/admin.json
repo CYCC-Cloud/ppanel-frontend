@@ -8224,6 +8224,11 @@
                 "address": {
                     "type": "string"
                 },
+                "capacity": {
+                    "description": "0 uses the node settings' default",
+                    "type": "integer",
+                    "minimum": 0
+                },
                 "city": {
                     "type": "string"
                 },
@@ -9440,10 +9445,25 @@
                 "clear_days"
             ],
             "properties": {
+                "audit_log_retention_days": {
+                    "type": "integer",
+                    "maximum": 3650,
+                    "minimum": 0
+                },
                 "auto_clear": {
                     "type": "boolean"
                 },
                 "clear_days": {
+                    "type": "integer",
+                    "maximum": 3650,
+                    "minimum": 7
+                },
+                "traffic_daily_retention_days": {
+                    "type": "integer",
+                    "maximum": 3650,
+                    "minimum": 0
+                },
+                "traffic_hourly_retention_days": {
                     "type": "integer",
                     "maximum": 3650,
                     "minimum": 7
@@ -9600,6 +9620,10 @@
                     "items": {
                         "type": "string"
                     }
+                },
+                "default_server_capacity": {
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "dns": {
                     "type": "array",
@@ -10774,6 +10798,9 @@
             "properties": {
                 "address": {
                     "type": "string"
+                },
+                "capacity": {
+                    "type": "integer"
                 },
                 "city": {
                     "type": "string"
@@ -11977,6 +12004,11 @@
             "properties": {
                 "address": {
                     "type": "string"
+                },
+                "capacity": {
+                    "description": "0 uses the node settings' default",
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "city": {
                     "type": "string"

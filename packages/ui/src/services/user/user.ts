@@ -792,6 +792,40 @@ export async function putV1PublicUserSubscribeToken(
   );
 }
 
+/** Get User Traffic History GET /v1/public/user/traffic/history */
+export async function getV1PublicUserTrafficHistory(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.getV1PublicUserTrafficHistoryParams,
+  options?: { [key: string]: any }
+) {
+  return request<
+    API.ResponseSuccessBean & { data?: API.TrafficHistoryResponse }
+  >(`${import.meta.env.VITE_API_PREFIX || ""}/v1/public/user/traffic/history`, {
+    method: "GET",
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  });
+}
+
+/** Get User Traffic Servers GET /v1/public/user/traffic/servers */
+export async function getV1PublicUserTrafficServers(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.getV1PublicUserTrafficServersParams,
+  options?: { [key: string]: any }
+) {
+  return request<
+    API.ResponseSuccessBean & { data?: API.TrafficServersResponse }
+  >(`${import.meta.env.VITE_API_PREFIX || ""}/v1/public/user/traffic/servers`, {
+    method: "GET",
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  });
+}
+
 /** Unbind Device PUT /v1/public/user/unbind_device */
 export async function putV1PublicUserUnbindDevice(
   body: API.UnbindDeviceRequest,

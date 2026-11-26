@@ -261,6 +261,8 @@ reset (type 3) order applies to; required for those types. */
 
   type CreateServerRequest = {
     address?: string;
+    /** 0 uses the node settings' default */
+    capacity?: number;
     city?: string;
     country?: string;
     name?: string;
@@ -1086,8 +1088,11 @@ subscription URL does not carry them, in query-string form such as
   };
 
   type LogSetting = {
+    audit_log_retention_days: number;
     auto_clear: boolean;
     clear_days: number;
+    traffic_daily_retention_days: number;
+    traffic_hourly_retention_days: number;
   };
 
   type MessageLog = {
@@ -1127,6 +1132,7 @@ subscription URL does not carry them, in query-string form such as
 
   type NodeConfig = {
     block: string[];
+    default_server_capacity: number;
     dns: NodeDNS[];
     ip_strategy: string;
     node_pull_interval: number;
@@ -1597,6 +1603,7 @@ server can run several listeners of the same protocol type. */
 
   type Server = {
     address: string;
+    capacity: number;
     city: string;
     country: string;
     created_at: number;
@@ -2024,6 +2031,8 @@ resolved listener, and Port defaults to the listener's inbound port. */
 
   type UpdateServerRequest = {
     address?: string;
+    /** 0 uses the node settings' default */
+    capacity?: number;
     city?: string;
     country?: string;
     id?: number;
