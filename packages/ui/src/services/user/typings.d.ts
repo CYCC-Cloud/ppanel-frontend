@@ -221,6 +221,20 @@ declare namespace API {
     size: number;
   };
 
+  type getV1PublicUserTrafficHistoryParams = {
+    end: number;
+    granularity: "minute" | "hour" | "day" | "month";
+    start: number;
+    tz?: string;
+    user_subscribe_id: number;
+  };
+
+  type getV1PublicUserTrafficServersParams = {
+    end: number;
+    start: number;
+    user_subscribe_id: number;
+  };
+
   type getV1PublicUserWithdrawalLogParams = {
     page: number;
     size: number;
@@ -532,6 +546,32 @@ it was recorded. */
     user_id: number;
   };
 
+  type TrafficHistoryPoint = {
+    download: number;
+    time: number;
+    upload: number;
+  };
+
+  type TrafficHistoryResponse = {
+    list: TrafficHistoryPoint[];
+    timezone: string;
+  };
+
+  type TrafficServerItem = {
+    city: string;
+    country: string;
+    download: number;
+    nodes: string[];
+    server_id: number;
+    total: number;
+    upload: number;
+  };
+
+  type TrafficServersResponse = {
+    list: TrafficServerItem[];
+    timezone: string;
+  };
+
   type UnbindDeviceRequest = {
     id: number;
   };
@@ -744,9 +784,13 @@ until its owner removes it. */
     country: string;
     created_at: number;
     id: number;
+    /** omitted while the server is offline */
+    load: string;
     name: string;
     port: number;
     protocol: string;
+    /** online, degraded or offline */
+    status: string;
     tags: string[];
     uuid: string;
   };
